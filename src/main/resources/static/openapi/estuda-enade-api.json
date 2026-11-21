@@ -1,0 +1,4437 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Estuda ENADE API",
+    "version": "0.0.1",
+    "description": "Contrato da API do Estuda ENADE (aluno e professor).\n\nEste arquivo é a fonte da API: as classes de requisição e as interfaces dos controllers são geradas a partir dele pelo OpenAPI Generator a cada build. Para mudar uma rota ou um campo, altere aqui primeiro.\n\nFora de `/auth`, todas as rotas exigem `Authorization: Bearer <accessToken>`. Erros seguem `{ \"codigo\": \"...\", \"mensagem\": \"...\" }`."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Este servidor"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Login sem senha e dados da conta"
+    },
+    {
+      "name": "Catalogo",
+      "description": "Cursos e temas usados nos filtros"
+    },
+    {
+      "name": "ProfessorCadastro",
+      "description": "Aprovação de professores e convites"
+    },
+    {
+      "name": "ProfessorTurma",
+      "description": "Turmas do professor, alunos e atividades da turma"
+    },
+    {
+      "name": "ProfessorQuestao",
+      "description": "Banco de questões"
+    },
+    {
+      "name": "ProfessorAtividade",
+      "description": "Listas e simulados"
+    },
+    {
+      "name": "Aluno",
+      "description": "Turmas, atividades, tentativas, prática livre e desempenho do aluno"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/codigo": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "solicitarCodigo",
+        "summary": "Envia o código de acesso para o e-mail",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitarCodigoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "429": {
+            "description": "Muitos códigos solicitados para o mesmo e-mail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/entrar": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "entrar",
+        "summary": "Entra com e-mail e código (cria a conta no primeiro acesso)",
+        "description": "No primeiro acesso de um e-mail responde `422 CADASTRO_NECESSARIO` sem gastar o código; reenvie com `nome` e `papel`. Professor entra aprovado com `codigoConvite` válido ou e-mail de domínio institucional; nos demais casos fica pendente.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntrarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Código inválido ou sessão expirada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`CADASTRO_NECESSARIO` ou `CONVITE_INVALIDO`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/renovar": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "renovar",
+        "summary": "Troca o refresh token por uma nova sessão",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Código inválido ou sessão expirada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sair": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "sair",
+        "summary": "Revoga o refresh token",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/eu": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "eu",
+        "summary": "Dados da conta logada",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "atualizarNome",
+        "summary": "Altera o nome da conta logada",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NomeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/cursos": {
+      "get": {
+        "tags": [
+          "Catalogo"
+        ],
+        "operationId": "cursos",
+        "summary": "Cursos, em ordem alfabética",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ItemResponse"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/temas": {
+      "get": {
+        "tags": [
+          "Catalogo"
+        ],
+        "operationId": "temas",
+        "summary": "Temas, em ordem alfabética",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ItemResponse"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/cursos": {
+      "post": {
+        "tags": [
+          "Catalogo"
+        ],
+        "operationId": "criarCurso",
+        "summary": "Cria o curso ou devolve o existente com o mesmo nome",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NomeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/temas": {
+      "post": {
+        "tags": [
+          "Catalogo"
+        ],
+        "operationId": "criarTema",
+        "summary": "Cria o tema ou devolve o existente com o mesmo nome",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NomeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/professores/pendentes": {
+      "get": {
+        "tags": [
+          "ProfessorCadastro"
+        ],
+        "operationId": "professoresPendentes",
+        "summary": "Professores aguardando aprovação",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProfessorPendenteResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/professores/{professorId}/aprovar": {
+      "post": {
+        "tags": [
+          "ProfessorCadastro"
+        ],
+        "operationId": "aprovarProfessor",
+        "summary": "Aprova o cadastro de um professor pendente",
+        "description": "O professor aprovado precisa renovar a sessão para o acesso valer.",
+        "parameters": [
+          {
+            "name": "professorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfessorPendenteResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/convites": {
+      "get": {
+        "tags": [
+          "ProfessorCadastro"
+        ],
+        "operationId": "convites",
+        "summary": "Convites de professor criados por mim",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConviteResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ProfessorCadastro"
+        ],
+        "operationId": "criarConvite",
+        "summary": "Gera um convite de professor de uso único",
+        "responses": {
+          "201": {
+            "description": "Criado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConviteCriadoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/turmas": {
+      "get": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "listarTurmas",
+        "summary": "Minhas turmas",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TurmaResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "criarTurma",
+        "summary": "Cria uma turma e gera o código de convite",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurmaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurmaResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/turmas/{turmaId}": {
+      "get": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "detalharTurma",
+        "summary": "Turma com a lista de alunos",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurmaDetalheResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "atualizarTurma",
+        "summary": "Edita a turma",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurmaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurmaResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/turmas/{turmaId}/convite": {
+      "post": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "renovarConvite",
+        "summary": "Gera novo código de convite; o antigo deixa de valer",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurmaResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/turmas/{turmaId}/alunos/{alunoId}": {
+      "delete": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "removerAluno",
+        "summary": "Remove o aluno da turma",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "alunoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/turmas/{turmaId}/alunos/{alunoId}/desempenho": {
+      "get": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "desempenhoDoAluno",
+        "summary": "Desempenho do aluno nas atividades da turma",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "alunoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesempenhoAlunoTurmaResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/turmas/{turmaId}/resumo": {
+      "get": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "resumoDaTurma",
+        "summary": "Painel da turma: alunos, banco, atividades abertas e média",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumoTurmaResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/turmas/{turmaId}/atividades": {
+      "get": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "atividadesDaTurma",
+        "summary": "Atividades da turma",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AtividadeResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "criarAtividade",
+        "summary": "Cria uma atividade em rascunho",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtividadeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtividadeResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/questoes": {
+      "get": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "listarQuestoes",
+        "summary": "Banco de questões: publicadas de todos os professores e as minhas em qualquer estado",
+        "parameters": [
+          {
+            "name": "minhas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Só as que eu criei."
+          },
+          {
+            "name": "cursoId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "temaId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StatusQuestao"
+            }
+          },
+          {
+            "name": "sinalizadas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Só as que têm sinalização aberta."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            },
+            "description": "Começa em 0."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            },
+            "description": "Itens por página; o servidor limita a 100."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaQuestaoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "criarQuestao",
+        "summary": "Cria uma questão em rascunho",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestaoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestaoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/questoes/{questaoId}": {
+      "get": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "detalharQuestao",
+        "summary": "Questão completa",
+        "parameters": [
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestaoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "atualizarQuestao",
+        "summary": "Edita a questão (só o autor)",
+        "parameters": [
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestaoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestaoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/questoes/{questaoId}/publicar": {
+      "post": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "publicarQuestao",
+        "summary": "Publica a questão no banco compartilhado",
+        "parameters": [
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestaoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/questoes/{questaoId}/ocultar": {
+      "post": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "ocultarQuestao",
+        "summary": "Tira a questão do banco e da prática livre",
+        "parameters": [
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestaoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/questoes/{questaoId}/sinalizacoes": {
+      "get": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "sinalizacoesDaQuestao",
+        "summary": "Sinalizações de possível erro da questão",
+        "parameters": [
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SinalizacaoResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "sinalizarQuestao",
+        "summary": "Sinaliza possível erro na questão",
+        "parameters": [
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SinalizacaoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/questoes/{questaoId}/sinalizacoes/resolver": {
+      "post": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "resolverSinalizacoes",
+        "summary": "O autor marca as sinalizações abertas como resolvidas",
+        "parameters": [
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestaoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/atividades/{atividadeId}": {
+      "get": {
+        "tags": [
+          "ProfessorAtividade"
+        ],
+        "operationId": "detalharAtividade",
+        "summary": "Atividade com as questões",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtividadeDetalheResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ProfessorAtividade"
+        ],
+        "operationId": "atualizarAtividade",
+        "summary": "Edita a atividade (só rascunho)",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtividadeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtividadeResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ProfessorAtividade"
+        ],
+        "operationId": "excluirAtividade",
+        "summary": "Exclui a atividade (só rascunho)",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/atividades/{atividadeId}/publicar": {
+      "post": {
+        "tags": [
+          "ProfessorAtividade"
+        ],
+        "operationId": "publicarAtividade",
+        "summary": "Publica a atividade para a turma",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtividadeResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/atividades/{atividadeId}/encerrar": {
+      "post": {
+        "tags": [
+          "ProfessorAtividade"
+        ],
+        "operationId": "encerrarAtividade",
+        "summary": "Fecha a atividade para novas tentativas",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtividadeResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/atividades/{atividadeId}/resultados": {
+      "get": {
+        "tags": [
+          "ProfessorAtividade"
+        ],
+        "operationId": "resultadosDaAtividade",
+        "summary": "Resultado por aluno, por tema e média da turma",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadosAtividadeResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/turmas/entrar": {
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "entrarNaTurma",
+        "summary": "Entra na turma com o código do convite",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntrarTurmaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurmaAlunoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/turmas": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "minhasTurmas",
+        "summary": "Minhas turmas",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TurmaAlunoResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/atividades": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "minhasAtividades",
+        "summary": "Atividades das minhas turmas e minhas tentativas",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AtividadeAlunoResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/atividades/{atividadeId}": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "minhaAtividade",
+        "summary": "Uma atividade e minhas tentativas nela",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtividadeAlunoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/atividades/{atividadeId}/tentativas": {
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "iniciarTentativa",
+        "summary": "Inicia a tentativa (o cronômetro começa aqui) ou retoma a que está em andamento",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TentativaEstadoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/tentativas": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "historicoDeTentativas",
+        "summary": "Histórico de tentativas",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TentativaResumoResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/tentativas/{tentativaId}": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "estadoDaTentativa",
+        "summary": "Questões, respostas marcadas e tempo restante",
+        "parameters": [
+          {
+            "name": "tentativaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TentativaEstadoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/tentativas/{tentativaId}/respostas/{questaoId}": {
+      "put": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "responderNaTentativa",
+        "summary": "Marca a alternativa de uma questão (nulo deixa em branco)",
+        "parameters": [
+          {
+            "name": "tentativaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/tentativas/{tentativaId}/enviar": {
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "enviarTentativa",
+        "summary": "Envia a tentativa e devolve o resultado",
+        "parameters": [
+          {
+            "name": "tentativaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoTentativaResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/tentativas/{tentativaId}/resultado": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "resultadoDaTentativa",
+        "summary": "Nota, gabarito, explicações e acertos por tema",
+        "parameters": [
+          {
+            "name": "tentativaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoTentativaResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/pratica/anos": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "anosDaPratica",
+        "summary": "Anos com questões publicadas",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/pratica/questoes": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "questoesDaPratica",
+        "summary": "Questões para prática livre, sem gabarito",
+        "description": "Ficam de fora as questões de atividades que o aluno ainda não concluiu.",
+        "parameters": [
+          {
+            "name": "cursoId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "temaId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            },
+            "description": "Começa em 0."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            },
+            "description": "Itens por página; o servidor limita a 100."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaQuestaoAlunoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/pratica/questoes/{questaoId}/responder": {
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "responderNaPratica",
+        "summary": "Responde e recebe gabarito e explicação",
+        "parameters": [
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GabaritoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/questoes/{questaoId}/sinalizacoes": {
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "sinalizarQuestaoComoAluno",
+        "summary": "Sinaliza possível erro na questão",
+        "parameters": [
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SinalizacaoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/desempenho": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "meuDesempenho",
+        "summary": "Acertos gerais e por tema",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesempenhoAlunoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "Erro": {
+        "description": "Erro no formato padrão da API.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErroResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Papel": {
+        "type": "string",
+        "enum": [
+          "ALUNO",
+          "PROFESSOR"
+        ],
+        "description": "Papel da conta."
+      },
+      "TipoAtividade": {
+        "type": "string",
+        "enum": [
+          "LISTA",
+          "SIMULADO"
+        ],
+        "description": "Tipo da atividade."
+      },
+      "StatusAtividade": {
+        "type": "string",
+        "enum": [
+          "RASCUNHO",
+          "PUBLICADA",
+          "ENCERRADA"
+        ],
+        "description": "Situação da atividade."
+      },
+      "StatusQuestao": {
+        "type": "string",
+        "enum": [
+          "RASCUNHO",
+          "PUBLICADA",
+          "OCULTA"
+        ],
+        "description": "Situação da questão no banco."
+      },
+      "Encerramento": {
+        "type": "string",
+        "enum": [
+          "ENVIO",
+          "TEMPO"
+        ],
+        "description": "Como a tentativa terminou: envio do aluno ou fim do tempo."
+      },
+      "SolicitarCodigoRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "description": "E-mail que vai receber o código de acesso.",
+            "minLength": 1
+          }
+        }
+      },
+      "EntrarRequest": {
+        "type": "object",
+        "description": "Login pelo código de acesso. `nome` e `papel` só são necessários no primeiro acesso.",
+        "required": [
+          "email",
+          "codigo"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 1
+          },
+          "codigo": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 20,
+            "description": "Código de acesso recebido."
+          },
+          "nome": {
+            "type": "string",
+            "maxLength": 120,
+            "nullable": true,
+            "description": "Só no primeiro acesso (cadastro)."
+          },
+          "papel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Papel"
+              }
+            ],
+            "nullable": true,
+            "description": "Só no primeiro acesso (cadastro)."
+          },
+          "codigoConvite": {
+            "type": "string",
+            "maxLength": 40,
+            "nullable": true,
+            "description": "Opcional, só no cadastro de professor: convite recebido de outro professor."
+          }
+        }
+      },
+      "RefreshRequest": {
+        "type": "object",
+        "required": [
+          "refreshToken"
+        ],
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 200
+          }
+        }
+      },
+      "NomeRequest": {
+        "type": "object",
+        "required": [
+          "nome"
+        ],
+        "properties": {
+          "nome": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 120
+          }
+        }
+      },
+      "TurmaRequest": {
+        "type": "object",
+        "required": [
+          "nome"
+        ],
+        "properties": {
+          "nome": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 120
+          },
+          "periodo": {
+            "type": "string",
+            "maxLength": 20,
+            "nullable": true,
+            "description": "Ex.: 2026.2"
+          },
+          "cursoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
+      },
+      "EntrarTurmaRequest": {
+        "type": "object",
+        "required": [
+          "codigo"
+        ],
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 20,
+            "description": "Código de convite da turma."
+          }
+        }
+      },
+      "AlternativaRequest": {
+        "type": "object",
+        "required": [
+          "texto"
+        ],
+        "properties": {
+          "texto": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 2000
+          },
+          "correta": {
+            "type": "boolean",
+            "default": false,
+            "description": "Marca a alternativa do gabarito."
+          }
+        }
+      },
+      "QuestaoRequest": {
+        "type": "object",
+        "required": [
+          "enunciado",
+          "ano",
+          "cursoId",
+          "temaId",
+          "alternativas"
+        ],
+        "properties": {
+          "enunciado": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 10000
+          },
+          "explicacao": {
+            "type": "string",
+            "maxLength": 10000,
+            "nullable": true,
+            "description": "Obrigatória para publicar."
+          },
+          "ano": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 2004,
+            "maximum": 2100,
+            "description": "Ano de referência do item do ENADE."
+          },
+          "cursoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "temaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "alternativas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlternativaRequest"
+            },
+            "minItems": 2,
+            "maxItems": 5
+          }
+        }
+      },
+      "SinalizacaoRequest": {
+        "type": "object",
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 1000,
+            "nullable": true
+          }
+        }
+      },
+      "ResponderRequest": {
+        "type": "object",
+        "properties": {
+          "alternativaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Alternativa marcada. Em uma tentativa, nulo deixa a questão em branco."
+          }
+        }
+      },
+      "AtividadeRequest": {
+        "type": "object",
+        "required": [
+          "titulo",
+          "tipo",
+          "questaoIds"
+        ],
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 160
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoAtividade"
+          },
+          "duracaoMinutos": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 600,
+            "nullable": true,
+            "description": "Nulo = sem tempo."
+          },
+          "maxTentativas": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 50,
+            "nullable": true,
+            "description": "Nulo = tentativas ilimitadas; 1 = sem novas tentativas."
+          },
+          "questaoIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 200,
+            "description": "Questões publicadas, na ordem em que aparecem para o aluno."
+          }
+        }
+      },
+      "ErroResponse": {
+        "type": "object",
+        "required": [
+          "codigo",
+          "mensagem"
+        ],
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "description": "Código estável do erro, ex.: `NAO_ENCONTRADO`, `VALIDACAO`, `CADASTRO_PENDENTE`."
+          },
+          "mensagem": {
+            "type": "string"
+          },
+          "campos": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Só em erros de validação: campo → mensagem."
+          }
+        }
+      },
+      "ItemResponse": {
+        "type": "object",
+        "description": "Par id + nome (curso, tema, turma, autor).",
+        "required": [
+          "id",
+          "nome"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          }
+        }
+      },
+      "UsuarioResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "email",
+          "papel",
+          "aprovado"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "papel": {
+            "$ref": "#/components/schemas/Papel"
+          },
+          "aprovado": {
+            "type": "boolean",
+            "description": "Falso só para professor que ainda aguarda aprovação."
+          }
+        }
+      },
+      "SessaoResponse": {
+        "type": "object",
+        "required": [
+          "accessToken",
+          "refreshToken",
+          "expiraEmSegundos",
+          "usuario"
+        ],
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "expiraEmSegundos": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Validade do access token."
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/UsuarioResponse"
+          }
+        }
+      },
+      "ProfessorPendenteResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "email",
+          "aprovado",
+          "criadoEm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "aprovado": {
+            "type": "boolean"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConviteCriadoResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "codigo",
+          "expiraEm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "codigo": {
+            "type": "string",
+            "description": "Só aparece nesta resposta."
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConviteResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "criadoEm",
+          "expiraEm",
+          "usado",
+          "usadoPor",
+          "usadoEm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usado": {
+            "type": "boolean"
+          },
+          "usadoPor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Nome de quem usou."
+          },
+          "usadoEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "TurmaResponse": {
+        "type": "object",
+        "description": "Turma vista pelo professor.",
+        "required": [
+          "id",
+          "nome",
+          "periodo",
+          "curso",
+          "codigoConvite",
+          "totalAlunos",
+          "criadaEm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "periodo": {
+            "type": "string",
+            "nullable": true
+          },
+          "curso": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ItemResponse"
+              }
+            ],
+            "nullable": true
+          },
+          "codigoConvite": {
+            "type": "string"
+          },
+          "totalAlunos": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "criadaEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AlunoResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "email",
+          "entrouEm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "entrouEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TurmaDetalheResponse": {
+        "type": "object",
+        "required": [
+          "turma",
+          "alunos"
+        ],
+        "properties": {
+          "turma": {
+            "$ref": "#/components/schemas/TurmaResponse"
+          },
+          "alunos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlunoResponse"
+            }
+          }
+        }
+      },
+      "TurmaAlunoResponse": {
+        "type": "object",
+        "description": "Turma vista pelo aluno (sem código de convite).",
+        "required": [
+          "id",
+          "nome",
+          "periodo",
+          "curso",
+          "professor"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "periodo": {
+            "type": "string",
+            "nullable": true
+          },
+          "curso": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ItemResponse"
+              }
+            ],
+            "nullable": true
+          },
+          "professor": {
+            "type": "string",
+            "description": "Nome do professor."
+          }
+        }
+      },
+      "AlternativaResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "letra",
+          "texto",
+          "correta"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "letra": {
+            "type": "string"
+          },
+          "texto": {
+            "type": "string"
+          },
+          "correta": {
+            "type": "boolean"
+          }
+        }
+      },
+      "QuestaoResponse": {
+        "type": "object",
+        "description": "Questão completa, com gabarito e explicação (visão do professor).",
+        "required": [
+          "id",
+          "enunciado",
+          "explicacao",
+          "ano",
+          "curso",
+          "tema",
+          "status",
+          "autor",
+          "minha",
+          "sinalizacoesAbertas",
+          "alternativas",
+          "criadaEm",
+          "atualizadaEm",
+          "publicadaEm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enunciado": {
+            "type": "string"
+          },
+          "explicacao": {
+            "type": "string",
+            "nullable": true
+          },
+          "ano": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "curso": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "tema": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusQuestao"
+          },
+          "autor": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "minha": {
+            "type": "boolean",
+            "description": "Verdadeiro se o professor logado é o autor."
+          },
+          "sinalizacoesAbertas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "alternativas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlternativaResponse"
+            }
+          },
+          "criadaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "atualizadaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publicadaEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "PaginaQuestaoResponse": {
+        "type": "object",
+        "required": [
+          "itens",
+          "pagina",
+          "tamanho",
+          "total"
+        ],
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestaoResponse"
+            }
+          },
+          "pagina": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Começa em 0."
+          },
+          "tamanho": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SinalizacaoResponse": {
+        "type": "object",
+        "description": "Sinalização de possível erro. Não identifica quem sinalizou.",
+        "required": [
+          "id",
+          "motivo",
+          "resolvida",
+          "criadaEm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolvida": {
+            "type": "boolean"
+          },
+          "criadaEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AlternativaAlunoResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "letra",
+          "texto"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "letra": {
+            "type": "string"
+          },
+          "texto": {
+            "type": "string"
+          }
+        }
+      },
+      "QuestaoAlunoResponse": {
+        "type": "object",
+        "description": "Questão para responder: sem gabarito e sem explicação.",
+        "required": [
+          "id",
+          "enunciado",
+          "ano",
+          "curso",
+          "tema",
+          "alternativas"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enunciado": {
+            "type": "string"
+          },
+          "ano": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "curso": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "tema": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "alternativas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlternativaAlunoResponse"
+            }
+          }
+        }
+      },
+      "PaginaQuestaoAlunoResponse": {
+        "type": "object",
+        "required": [
+          "itens",
+          "pagina",
+          "tamanho",
+          "total"
+        ],
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestaoAlunoResponse"
+            }
+          },
+          "pagina": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Começa em 0."
+          },
+          "tamanho": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "GabaritoResponse": {
+        "type": "object",
+        "required": [
+          "questaoId",
+          "alternativaCorretaId",
+          "letraCorreta",
+          "explicacao",
+          "alternativaMarcadaId",
+          "acertou"
+        ],
+        "properties": {
+          "questaoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "alternativaCorretaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "letraCorreta": {
+            "type": "string"
+          },
+          "explicacao": {
+            "type": "string",
+            "nullable": true
+          },
+          "alternativaMarcadaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "acertou": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AtividadeResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "turmaId",
+          "titulo",
+          "tipo",
+          "duracaoMinutos",
+          "maxTentativas",
+          "status",
+          "totalQuestoes",
+          "criadaEm",
+          "publicadaEm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "turmaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoAtividade"
+          },
+          "duracaoMinutos": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxTentativas": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusAtividade"
+          },
+          "totalQuestoes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "criadaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publicadaEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "AtividadeDetalheResponse": {
+        "type": "object",
+        "required": [
+          "atividade",
+          "questoes"
+        ],
+        "properties": {
+          "atividade": {
+            "$ref": "#/components/schemas/AtividadeResponse"
+          },
+          "questoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestaoResponse"
+            }
+          }
+        }
+      },
+      "AtividadeAlunoResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "titulo",
+          "tipo",
+          "turma",
+          "totalQuestoes",
+          "duracaoMinutos",
+          "maxTentativas",
+          "status",
+          "tentativasFeitas",
+          "tentativaAbertaId",
+          "melhorAcertos",
+          "podeIniciar"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoAtividade"
+          },
+          "turma": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "totalQuestoes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duracaoMinutos": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxTentativas": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusAtividade"
+          },
+          "tentativasFeitas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tentativaAbertaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "melhorAcertos": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "podeIniciar": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TentativaEstadoResponse": {
+        "type": "object",
+        "description": "Estado de uma tentativa. O cronômetro é do servidor: calcule o tempo restante por `expiraEm - agora`.",
+        "required": [
+          "id",
+          "atividadeId",
+          "titulo",
+          "numero",
+          "iniciadaEm",
+          "expiraEm",
+          "agora",
+          "segundosRestantes",
+          "finalizada",
+          "questoes",
+          "respostas"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "atividadeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "numero": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "iniciadaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Fim do cronômetro. Nulo = atividade sem tempo."
+          },
+          "agora": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Relógio do servidor."
+          },
+          "segundosRestantes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "finalizada": {
+            "type": "boolean"
+          },
+          "questoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestaoAlunoResponse"
+            }
+          },
+          "respostas": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "questaoId → alternativaId já marcada."
+          }
+        }
+      },
+      "TentativaResumoResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "atividadeId",
+          "titulo",
+          "numero",
+          "iniciadaEm",
+          "finalizadaEm",
+          "encerramento",
+          "acertos",
+          "total"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "atividadeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "numero": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "iniciadaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finalizadaEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "encerramento": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Encerramento"
+              }
+            ],
+            "nullable": true
+          },
+          "acertos": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "TemaDesempenho": {
+        "type": "object",
+        "required": [
+          "temaId",
+          "tema",
+          "respondidas",
+          "acertos",
+          "percentual"
+        ],
+        "properties": {
+          "temaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tema": {
+            "type": "string"
+          },
+          "respondidas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "acertos": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "percentual": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "QuestaoCorrigidaResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "enunciado",
+          "explicacao",
+          "tema",
+          "alternativas",
+          "alternativaMarcadaId",
+          "acertou"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enunciado": {
+            "type": "string"
+          },
+          "explicacao": {
+            "type": "string",
+            "nullable": true
+          },
+          "tema": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "alternativas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlternativaResponse"
+            }
+          },
+          "alternativaMarcadaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "acertou": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ResultadoTentativaResponse": {
+        "type": "object",
+        "description": "Resultado de uma tentativa finalizada, com gabarito e explicações.",
+        "required": [
+          "tentativa",
+          "tempoSegundos",
+          "porTema",
+          "questoes"
+        ],
+        "properties": {
+          "tentativa": {
+            "$ref": "#/components/schemas/TentativaResumoResponse"
+          },
+          "tempoSegundos": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "porTema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemaDesempenho"
+            }
+          },
+          "questoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestaoCorrigidaResponse"
+            }
+          }
+        }
+      },
+      "DesempenhoAlunoResponse": {
+        "type": "object",
+        "description": "Prática livre + tentativas finalizadas.",
+        "required": [
+          "respondidas",
+          "acertos",
+          "percentual",
+          "melhorTema",
+          "porTema"
+        ],
+        "properties": {
+          "respondidas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "acertos": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "percentual": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "melhorTema": {
+            "type": "string",
+            "nullable": true
+          },
+          "porTema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemaDesempenho"
+            }
+          }
+        }
+      },
+      "AtividadeRecente": {
+        "type": "object",
+        "required": [
+          "id",
+          "titulo",
+          "tipo",
+          "status",
+          "totalQuestoes",
+          "duracaoMinutos",
+          "concluiram"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "totalQuestoes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duracaoMinutos": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "concluiram": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ResumoTurmaResponse": {
+        "type": "object",
+        "required": [
+          "totalAlunos",
+          "questoesNoBanco",
+          "atividadesAbertas",
+          "mediaPercentual",
+          "atividades"
+        ],
+        "properties": {
+          "totalAlunos": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "questoesNoBanco": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "atividadesAbertas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "mediaPercentual": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "atividades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AtividadeRecente"
+            }
+          }
+        }
+      },
+      "ResultadoAluno": {
+        "type": "object",
+        "description": "Sem tentativa finalizada, acertos, total e tempo vêm nulos.",
+        "required": [
+          "alunoId",
+          "nome",
+          "tentativas",
+          "acertos",
+          "total",
+          "tempoSegundos"
+        ],
+        "properties": {
+          "alunoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "tentativas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "acertos": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "tempoSegundos": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        }
+      },
+      "ResultadosAtividadeResponse": {
+        "type": "object",
+        "description": "Com mais de uma tentativa, vale a melhor de cada aluno.",
+        "required": [
+          "atividade",
+          "totalAlunos",
+          "concluiram",
+          "media",
+          "tempoMedioSegundos",
+          "porTema",
+          "alunos"
+        ],
+        "properties": {
+          "atividade": {
+            "$ref": "#/components/schemas/AtividadeResponse"
+          },
+          "totalAlunos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "concluiram": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "media": {
+            "type": "number",
+            "format": "double",
+            "nullable": true,
+            "description": "Nota média de 0 a 10 entre os alunos que concluíram."
+          },
+          "tempoMedioSegundos": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "porTema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemaDesempenho"
+            }
+          },
+          "alunos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultadoAluno"
+            }
+          }
+        }
+      },
+      "DesempenhoAlunoTurmaResponse": {
+        "type": "object",
+        "required": [
+          "alunoId",
+          "nome",
+          "porTema",
+          "tentativas"
+        ],
+        "properties": {
+          "alunoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "porTema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemaDesempenho"
+            }
+          },
+          "tentativas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TentativaResumoResponse"
+            }
+          }
+        }
+      }
+    }
+  }
+}
