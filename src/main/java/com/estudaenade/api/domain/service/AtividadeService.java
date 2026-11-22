@@ -6,6 +6,7 @@ import com.estudaenade.api.api.dto.AtividadeDtos.AtividadeResponse;
 import com.estudaenade.api.api.dto.QuestaoDtos.QuestaoResponse;
 import com.estudaenade.api.domain.enums.StatusAtividade;
 import com.estudaenade.api.domain.enums.StatusQuestao;
+import com.estudaenade.api.domain.enums.TipoAtividade;
 import com.estudaenade.api.domain.model.Atividade;
 import com.estudaenade.api.domain.model.AtividadeQuestao;
 import com.estudaenade.api.domain.model.Questao;
@@ -57,6 +58,8 @@ public class AtividadeService {
         if (atividade.getQuestoes().isEmpty()) {
             throw ApiException.regra("ATIVIDADE_SEM_QUESTOES", "Adicione ao menos uma questão antes de publicar.");
         }
+        // Rascunhos gravados antes desta regra também precisam respeitá-la.
+        validarTentativas(atividade.getTipo(), atividade.getMaxTentativas());
         atividade.setStatus(StatusAtividade.PUBLICADA);
         atividade.setPublicadaEm(Instant.now());
         return AtividadeResponse.de(atividade);
@@ -105,10 +108,29 @@ public class AtividadeService {
         }
     }
 
+    /** Máximo de tentativas do treino (lista), que também aceita ilimitadas. */
+    static final int MAX_TENTATIVAS_LISTA = 5;
+    /** Máximo de tentativas do simulado, que não aceita ilimitadas. */
+    static final int MAX_TENTATIVAS_SIMULADO = 2;
+
+    /** Lista: 1 a 5 ou ilimitadas ({@code null}). Simulado: 1 ou 2. */
+    private void validarTentativas(TipoAtividade tipo, Integer maxTentativas) {
+        if (tipo == TipoAtividade.SIMULADO) {
+            if (maxTentativas == null || maxTentativas < 1 || maxTentativas > MAX_TENTATIVAS_SIMULADO) {
+                throw ApiException.regra("TENTATIVAS_INVALIDAS",
+                        "O simulado permite 1 ou " + MAX_TENTATIVAS_SIMULADO + " tentativas, sem opção ilimitada.");
+            }
+        } else if (maxTentativas != null && (maxTentativas < 1 || maxTentativas > MAX_TENTATIVAS_LISTA)) {
+            throw ApiException.regra("TENTATIVAS_INVALIDAS",
+                    "A lista permite de 1 a " + MAX_TENTATIVAS_LISTA + " tentativas, ou ilimitadas.");
+        }
+    }
+
     private void aplicar(Atividade atividade, AtividadeRequest req) {
         if (new HashSet<>(req.getQuestaoIds()).size() != req.getQuestaoIds().size()) {
             throw ApiException.regra("QUESTAO_REPETIDA", "A mesma questão foi incluída mais de uma vez.");
         }
+        validarTentativas(req.getTipo(), req.getMaxTentativas());
         atividade.setTitulo(req.getTitulo().trim());
         atividade.setTipo(req.getTipo());
         atividade.setDuracaoMinutos(req.getDuracaoMinutos());

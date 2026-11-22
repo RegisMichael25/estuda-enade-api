@@ -30,11 +30,16 @@ class TurmaEAtividadeTest extends IntegrationTest {
         q2 = questaoPublicada(prof, curso, criarTema(prof, "Redes"), 1);
     }
 
-    /** Cria e publica uma atividade com q1 e q2; devolve o id. */
+    /** Cria e publica um simulado com q1 e q2; devolve o id. */
     private String atividadePublicada(String duracao, String maxTentativas) throws Exception {
+        return atividadePublicada("SIMULADO", duracao, maxTentativas);
+    }
+
+    /** Cria e publica uma atividade do tipo informado com q1 e q2; devolve o id. */
+    private String atividadePublicada(String tipo, String duracao, String maxTentativas) throws Exception {
         String id = ler(post("/api/v1/professor/turmas/" + turmaId + "/atividades", prof, """
-                {"titulo":"Simulado 1","tipo":"SIMULADO","duracaoMinutos":%s,"maxTentativas":%s,"questaoIds":["%s","%s"]}
-                """.formatted(duracao, maxTentativas, q1, q2)).andExpect(status().isCreated()), "$.id");
+                {"titulo":"Atividade 1","tipo":"%s","duracaoMinutos":%s,"maxTentativas":%s,"questaoIds":["%s","%s"]}
+                """.formatted(tipo, duracao, maxTentativas, q1, q2)).andExpect(status().isCreated()), "$.id");
         post("/api/v1/professor/atividades/" + id + "/publicar", prof, null).andExpect(status().isOk());
         return id;
     }
@@ -190,7 +195,7 @@ class TurmaEAtividadeTest extends IntegrationTest {
 
     @Test
     void fimDoTempoEnviaAutomaticamenteOQueEstavaMarcado() throws Exception {
-        String atividade = atividadePublicada("30", "null");
+        String atividade = atividadePublicada("LISTA", "30", "null");
         entrarNaTurma(ana);
         ResultActions estado = post("/api/v1/aluno/atividades/" + atividade + "/tentativas", ana, null);
         String tentativa = ler(estado, "$.id");
@@ -213,6 +218,52 @@ class TurmaEAtividadeTest extends IntegrationTest {
         // tentativas ilimitadas: pode começar outra, com numeração seguinte
         post("/api/v1/aluno/atividades/" + atividade + "/tentativas", ana, null)
                 .andExpect(status().isOk()).andExpect(jsonPath("$.numero").value(2));
+    }
+
+    /** Corpo de criação com o tipo e o limite de tentativas informados. */
+    private String corpoAtividade(String tipo, String maxTentativas) {
+        return """
+                {"titulo":"Regra","tipo":"%s","maxTentativas":%s,"questaoIds":["%s"]}
+                """.formatted(tipo, maxTentativas, q1);
+    }
+
+    @Test
+    void listaAceitaDeUmACincoTentativasOuIlimitadas() throws Exception {
+        String rota = "/api/v1/professor/turmas/" + turmaId + "/atividades";
+        for (String max : new String[]{"1", "5", "null"}) {
+            post(rota, prof, corpoAtividade("LISTA", max)).andExpect(status().isCreated());
+        }
+        // acima de 5 o contrato já recusa
+        post(rota, prof, corpoAtividade("LISTA", "6")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void simuladoAceitaNoMaximoDuasTentativasESemIlimitadas() throws Exception {
+        String rota = "/api/v1/professor/turmas/" + turmaId + "/atividades";
+        post(rota, prof, corpoAtividade("SIMULADO", "1")).andExpect(status().isCreated());
+        String rascunho = ler(post(rota, prof, corpoAtividade("SIMULADO", "2")).andExpect(status().isCreated()), "$.id");
+
+        for (String max : new String[]{"3", "null"}) {
+            post(rota, prof, corpoAtividade("SIMULADO", max))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.codigo").value("TENTATIVAS_INVALIDAS"));
+        }
+        // a edição segue a mesma regra
+        put("/api/v1/professor/atividades/" + rascunho, prof, corpoAtividade("SIMULADO", "null"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("TENTATIVAS_INVALIDAS"));
+    }
+
+    @Test
+    void rascunhoAntigoForaDaRegraNaoPublica() throws Exception {
+        String rascunho = ler(post("/api/v1/professor/turmas/" + turmaId + "/atividades", prof,
+                corpoAtividade("LISTA", "null")).andExpect(status().isCreated()), "$.id");
+        // simula um simulado ilimitado gravado antes da regra
+        jdbc.update("update atividade set tipo = 'SIMULADO' where id = ?::uuid", rascunho);
+
+        post("/api/v1/professor/atividades/" + rascunho + "/publicar", prof, null)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("TENTATIVAS_INVALIDAS"));
     }
 
     @Test
