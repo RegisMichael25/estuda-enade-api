@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -80,6 +81,149 @@ class TurmaEAtividadeTest extends IntegrationTest {
         get("/api/v1/professor/turmas/" + turmaId, outro).andExpect(status().isNotFound());
         get("/api/v1/professor/turmas/" + turmaId + "/resumo", outro).andExpect(status().isNotFound());
         get("/api/v1/professor/turmas", outro).andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void painelDoProfessorResumeAsTurmasAtivas() throws Exception {
+        entrarNaTurma(ana);
+        String bruno = aluno("Bruno");
+        entrarNaTurma(bruno);
+        atividadePublicada("30", "1");
+
+        // segunda turma com a mesma aluna: conta uma vez no total
+        ResultActions segunda = criarTurma(prof);
+        String segundaId = ler(segunda, "$.id");
+        post("/api/v1/aluno/turmas/entrar", ana, "{\"codigo\":\"%s\"}".formatted((String) ler(segunda, "$.codigoConvite")))
+                .andExpect(status().isOk());
+
+        get("/api/v1/professor/painel", prof)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.turmasAtivas").value(2))
+                .andExpect(jsonPath("$.totalAlunos").value(2))
+                .andExpect(jsonPath("$.atividadesAbertas").value(1))
+                .andExpect(jsonPath("$.questoesNoBanco").value(2))
+                .andExpect(jsonPath("$.turmas", hasSize(2)))
+                .andExpect(jsonPath("$.atividades", hasSize(1)))
+                .andExpect(jsonPath("$.atividades[0].turma.id").value(turmaId))
+                .andExpect(jsonPath("$.atividades[0].totalAlunos").value(2))
+                .andExpect(jsonPath("$.atividades[0].concluiram").value(0));
+
+        // turma arquivada sai do painel, com as atividades dela
+        post("/api/v1/professor/turmas/" + turmaId + "/arquivar", prof, null).andExpect(status().isOk());
+        get("/api/v1/professor/painel", prof)
+                .andExpect(jsonPath("$.turmasAtivas").value(1))
+                .andExpect(jsonPath("$.turmas[0].id").value(segundaId))
+                .andExpect(jsonPath("$.totalAlunos").value(1))
+                .andExpect(jsonPath("$.atividadesAbertas").value(0))
+                .andExpect(jsonPath("$.atividades", hasSize(0)));
+
+        get("/api/v1/professor/painel", entrarComo("PROFESSOR", "Prof. Lima"))
+                .andExpect(jsonPath("$.turmasAtivas").value(0))
+                .andExpect(jsonPath("$.turmas", hasSize(0)));
+    }
+
+    @Test
+    void professorRemoveAlunoQueDeixaDeVerATurmaEPodeVoltarPeloCodigo() throws Exception {
+        entrarNaTurma(ana);
+        atividadePublicada("30", "1");
+        String anaId = ler(get("/api/v1/professor/turmas/" + turmaId, prof), "$.alunos[0].id");
+
+        delete("/api/v1/professor/turmas/" + turmaId + "/alunos/" + anaId, prof).andExpect(status().isNoContent());
+        delete("/api/v1/professor/turmas/" + turmaId + "/alunos/" + anaId, prof).andExpect(status().isNotFound());
+
+        get("/api/v1/professor/turmas/" + turmaId, prof).andExpect(jsonPath("$.alunos", hasSize(0)));
+        get("/api/v1/aluno/turmas", ana).andExpect(jsonPath("$", hasSize(0)));
+        get("/api/v1/aluno/atividades", ana).andExpect(jsonPath("$", hasSize(0)));
+
+        // outro professor não remove aluno da turma
+        entrarNaTurma(ana);
+        delete("/api/v1/professor/turmas/" + turmaId + "/alunos/" + anaId, entrarComo("PROFESSOR", "Prof. Lima"))
+                .andExpect(status().isNotFound());
+        get("/api/v1/professor/turmas/" + turmaId, prof).andExpect(jsonPath("$.alunos", hasSize(1)));
+    }
+
+    @Test
+    void alunoSaiDaTurmaEPodeVoltarPeloCodigo() throws Exception {
+        entrarNaTurma(ana);
+        String atividade = atividadePublicada("30", "1");
+        String tentativa = ler(post("/api/v1/aluno/atividades/" + atividade + "/tentativas", ana, null), "$.id");
+        post("/api/v1/aluno/tentativas/" + tentativa + "/enviar", ana, null).andExpect(status().isOk());
+
+        delete("/api/v1/aluno/turmas/" + turmaId, ana).andExpect(status().isNoContent());
+        delete("/api/v1/aluno/turmas/" + turmaId, ana).andExpect(status().isNotFound());
+
+        get("/api/v1/aluno/turmas", ana).andExpect(jsonPath("$", hasSize(0)));
+        get("/api/v1/aluno/atividades", ana).andExpect(jsonPath("$", hasSize(0)));
+        get("/api/v1/professor/turmas/" + turmaId, prof).andExpect(jsonPath("$.alunos", hasSize(0)));
+        // a tentativa continua guardada
+        get("/api/v1/aluno/tentativas", ana).andExpect(jsonPath("$", hasSize(1)));
+
+        // quem nunca esteve na turma recebe 404
+        delete("/api/v1/aluno/turmas/" + turmaId, aluno("Bruno")).andExpect(status().isNotFound());
+
+        entrarNaTurma(ana);
+        get("/api/v1/aluno/turmas", ana).andExpect(jsonPath("$", hasSize(1)));
+    }
+
+    @Test
+    void turmaArquivadaSaiDaListaENaoAceitaAlunosNemAtividades() throws Exception {
+        entrarNaTurma(ana);
+        String rascunho = ler(post("/api/v1/professor/turmas/" + turmaId + "/atividades", prof, """
+                {"titulo":"Lista","tipo":"LISTA","maxTentativas":1,"questaoIds":["%s"]}
+                """.formatted(q1)).andExpect(status().isCreated()), "$.id");
+        String publicada = atividadePublicada("30", "1");
+        get("/api/v1/aluno/turmas", ana).andExpect(jsonPath("$", hasSize(1)));
+
+        post("/api/v1/professor/turmas/" + turmaId + "/arquivar", prof, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.arquivadaEm").isNotEmpty());
+
+        // a atividade publicada é encerrada; o rascunho continua rascunho
+        get("/api/v1/professor/atividades/" + publicada, prof).andExpect(jsonPath("$.atividade.status").value("ENCERRADA"));
+        get("/api/v1/professor/atividades/" + rascunho, prof).andExpect(jsonPath("$.atividade.status").value("RASCUNHO"));
+        post("/api/v1/aluno/atividades/" + publicada + "/tentativas", ana, null)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("ATIVIDADE_ENCERRADA"));
+
+        // a turma some da lista do aluno
+        get("/api/v1/aluno/turmas", ana).andExpect(jsonPath("$", hasSize(0)));
+        post("/api/v1/professor/turmas/" + turmaId + "/arquivar", prof, null).andExpect(status().isOk()); // repetir não dá erro
+
+        get("/api/v1/professor/turmas", prof).andExpect(jsonPath("$", hasSize(0)));
+        get("/api/v1/professor/turmas?incluirArquivadas=true", prof)
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].arquivadaEm").isNotEmpty());
+
+        // novo aluno é recusado; quem já estava continua entrando sem erro
+        post("/api/v1/aluno/turmas/entrar", aluno("Bruno"), "{\"codigo\":\"%s\"}".formatted(codigoConvite))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("TURMA_ARQUIVADA"));
+        entrarNaTurma(ana);
+
+        post("/api/v1/professor/turmas/" + turmaId + "/atividades", prof, """
+                {"titulo":"Outra","tipo":"LISTA","maxTentativas":1,"questaoIds":["%s"]}
+                """.formatted(q1))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("TURMA_ARQUIVADA"));
+        post("/api/v1/professor/atividades/" + rascunho + "/publicar", prof, null)
+                .andExpect(jsonPath("$.codigo").value("TURMA_ARQUIVADA"));
+        post("/api/v1/professor/turmas/" + turmaId + "/convite", prof, null)
+                .andExpect(jsonPath("$.codigo").value("TURMA_ARQUIVADA"));
+
+        // alunos e histórico continuam guardados
+        get("/api/v1/professor/turmas/" + turmaId, prof).andExpect(jsonPath("$.alunos", hasSize(1)));
+
+        post("/api/v1/professor/turmas/" + turmaId + "/reativar", prof, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.arquivadaEm").value(nullValue()));
+        get("/api/v1/professor/turmas", prof).andExpect(jsonPath("$", hasSize(1)));
+        get("/api/v1/aluno/turmas", ana).andExpect(jsonPath("$", hasSize(1)));
+        get("/api/v1/professor/atividades/" + publicada, prof).andExpect(jsonPath("$.atividade.status").value("ENCERRADA"));
+        post("/api/v1/professor/atividades/" + rascunho + "/publicar", prof, null).andExpect(status().isOk());
+
+        // outro professor não arquiva a turma
+        post("/api/v1/professor/turmas/" + turmaId + "/arquivar", entrarComo("PROFESSOR", "Prof. Lima"), null)
+                .andExpect(status().isNotFound());
     }
 
     @Test

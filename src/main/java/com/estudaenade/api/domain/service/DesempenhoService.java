@@ -3,6 +3,7 @@ package com.estudaenade.api.domain.service;
 import com.estudaenade.api.api.dto.AtividadeDtos.AtividadeResponse;
 import com.estudaenade.api.api.dto.AtividadeDtos.TentativaResumoResponse;
 import com.estudaenade.api.api.dto.DesempenhoDtos.*;
+import com.estudaenade.api.api.dto.ItemResponse;
 import com.estudaenade.api.domain.model.Atividade;
 import com.estudaenade.api.domain.model.Usuario;
 import com.estudaenade.api.domain.repository.ParticipacaoRepository;
@@ -69,6 +70,55 @@ public class DesempenhoService {
     }
 
     // ======================== professor ========================
+
+    /** Painel inicial: só turmas não arquivadas do professor. */
+    public PainelProfessorResponse painelDoProfessor(UUID professorId) {
+        List<PainelTurma> turmas = jdbc.query("""
+                select t.id, t.nome, t.periodo, c.id as curso_id, c.nome as curso_nome,
+                       (select count(*) from participacao p where p.turma_id = t.id) as total_alunos,
+                       (select count(*) from atividade a where a.turma_id = t.id and a.status = 'PUBLICADA') as abertas,
+                       (select round(100.0 * sum(te.acertos) / nullif(sum(te.total), 0))::int
+                          from tentativa te join atividade a on a.id = te.atividade_id
+                         where a.turma_id = t.id and te.finalizada_em is not null) as media
+                from turma t
+                left join curso c on c.id = t.curso_id
+                where t.professor_id = ? and t.arquivada_em is null
+                order by t.criada_em desc
+                """, (rs, i) -> {
+            UUID cursoId = rs.getObject("curso_id", UUID.class);
+            return new PainelTurma(rs.getObject("id", UUID.class), rs.getString("nome"), rs.getString("periodo"),
+                    cursoId == null ? null : new ItemResponse(cursoId, rs.getString("curso_nome")),
+                    rs.getLong("total_alunos"), rs.getLong("abertas"), (Integer) rs.getObject("media"));
+        }, professorId);
+
+        long totalAlunos = contar("""
+                select count(distinct p.aluno_id) from participacao p join turma t on t.id = p.turma_id
+                where t.professor_id = ? and t.arquivada_em is null
+                """, professorId);
+        long atividadesAbertas = turmas.stream().mapToLong(PainelTurma::atividadesAbertas).sum();
+        long questoesNoBanco = contar("select count(*) from questao where status = 'PUBLICADA'");
+
+        List<AtividadeRecentePainel> atividades = jdbc.query("""
+                select a.id, a.titulo, a.tipo, a.status, a.duracao_minutos, t.id as turma_id, t.nome as turma_nome,
+                       (select count(*) from atividade_questao aq where aq.atividade_id = a.id) as total_questoes,
+                       (select count(distinct te.aluno_id) from tentativa te
+                         join participacao p on p.turma_id = a.turma_id and p.aluno_id = te.aluno_id
+                         where te.atividade_id = a.id and te.finalizada_em is not null) as concluiram,
+                       (select count(*) from participacao p where p.turma_id = t.id) as total_alunos
+                from atividade a
+                join turma t on t.id = a.turma_id
+                where t.professor_id = ? and t.arquivada_em is null and a.status <> 'RASCUNHO'
+                order by a.publicada_em desc
+                limit 6
+                """, (rs, i) -> new AtividadeRecentePainel(rs.getObject("id", UUID.class), rs.getString("titulo"),
+                rs.getString("tipo"), rs.getString("status"), rs.getInt("total_questoes"),
+                (Integer) rs.getObject("duracao_minutos"), rs.getLong("concluiram"),
+                new ItemResponse(rs.getObject("turma_id", UUID.class), rs.getString("turma_nome")),
+                rs.getLong("total_alunos")), professorId);
+
+        return new PainelProfessorResponse(turmas.size(), totalAlunos, atividadesAbertas, questoesNoBanco,
+                turmas, atividades);
+    }
 
     public ResumoTurmaResponse resumoDaTurma(UUID professorId, UUID turmaId) {
         turmaService.doProfessor(turmaId, professorId);

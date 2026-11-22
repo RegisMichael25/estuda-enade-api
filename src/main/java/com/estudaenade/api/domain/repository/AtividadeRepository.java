@@ -12,5 +12,7 @@ public interface AtividadeRepository extends JpaRepository<Atividade, UUID> {
 
     List<Atividade> findByTurmaIdOrderByCriadaEmDesc(UUID turmaId);
 
+    List<Atividade> findByTurmaIdAndStatus(UUID turmaId, StatusAtividade status);
+
     List<Atividade> findByTurmaIdInAndStatusInOrderByPublicadaEmDesc(Collection<UUID> turmaIds, Collection<StatusAtividade> status);
 }

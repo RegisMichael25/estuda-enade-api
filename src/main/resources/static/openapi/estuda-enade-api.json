@@ -574,6 +574,41 @@
         }
       }
     },
+    "/api/v1/professor/painel": {
+      "get": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "painelDoProfessor",
+        "summary": "Painel inicial: números e atividades recentes de todas as turmas ativas",
+        "description": "Considera só as turmas não arquivadas. `totalAlunos` conta cada aluno uma vez, mesmo que esteja em mais de uma turma.",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PainelProfessorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
     "/api/v1/professor/turmas": {
       "get": {
         "tags": [
@@ -608,7 +643,19 @@
           "default": {
             "$ref": "#/components/responses/Erro"
           }
-        }
+        },
+        "description": "Por padrão só as turmas ativas. Com `incluirArquivadas=true`, vêm também as arquivadas (campo `arquivadaEm` preenchido).",
+        "parameters": [
+          {
+            "name": "incluirArquivadas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Inclui as turmas arquivadas."
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -778,6 +825,129 @@
         ],
         "operationId": "renovarConvite",
         "summary": "Gera novo código de convite; o antigo deixa de valer",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurmaResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        },
+        "description": "Turma arquivada responde `422 TURMA_ARQUIVADA`."
+      }
+    },
+    "/api/v1/professor/turmas/{turmaId}/arquivar": {
+      "post": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "arquivarTurma",
+        "summary": "Arquiva a turma",
+        "description": "A turma sai da lista padrão, o código de convite deixa de aceitar alunos, ela não recebe novas atividades e as atividades publicadas passam a encerradas (tentativas em andamento seguem até o envio ou o fim do tempo). A turma some da lista do aluno. Alunos, atividades e resultados continuam guardados. Arquivar de novo não gera erro.",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurmaResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/turmas/{turmaId}/reativar": {
+      "post": {
+        "tags": [
+          "ProfessorTurma"
+        ],
+        "operationId": "reativarTurma",
+        "summary": "Reativa uma turma arquivada",
+        "description": "Volta a turma para a lista padrão (e para a lista do aluno) com o mesmo código de convite. As atividades encerradas no arquivamento continuam encerradas. Reativar uma turma ativa não gera erro.",
         "parameters": [
           {
             "name": "turmaId",
@@ -1130,7 +1300,8 @@
           "default": {
             "$ref": "#/components/responses/Erro"
           }
-        }
+        },
+        "description": "Turma arquivada responde `422 TURMA_ARQUIVADA`."
       }
     },
     "/api/v1/professor/questoes": {
@@ -1969,7 +2140,8 @@
           "default": {
             "$ref": "#/components/responses/Erro"
           }
-        }
+        },
+        "description": "Turma arquivada responde `422 TURMA_ARQUIVADA`."
       }
     },
     "/api/v1/professor/atividades/{atividadeId}/encerrar": {
@@ -2140,10 +2312,21 @@
               }
             }
           },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
           "default": {
             "$ref": "#/components/responses/Erro"
           }
-        }
+        },
+        "description": "Turma arquivada não aceita novos alunos: `422 TURMA_ARQUIVADA`."
       }
     },
     "/api/v1/aluno/turmas": {
@@ -2153,6 +2336,7 @@
         ],
         "operationId": "minhasTurmas",
         "summary": "Minhas turmas",
+        "description": "Turmas arquivadas pelo professor não aparecem.",
         "responses": {
           "200": {
             "description": "OK.",
@@ -2169,6 +2353,55 @@
           },
           "403": {
             "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/turmas/{turmaId}": {
+      "delete": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "sairDaTurma",
+        "summary": "Sai da turma",
+        "description": "O aluno deixa de ver a turma e as atividades dela. Tentativas e resultados ficam guardados. Para voltar, entra de novo com o código de convite. Turma em que o aluno não está responde 404.",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3436,7 +3669,8 @@
           "curso",
           "codigoConvite",
           "totalAlunos",
-          "criadaEm"
+          "criadaEm",
+          "arquivadaEm"
         ],
         "properties": {
           "id": {
@@ -3468,6 +3702,12 @@
           "criadaEm": {
             "type": "string",
             "format": "date-time"
+          },
+          "arquivadaEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Quando a turma foi arquivada; null se ativa."
           }
         }
       },
@@ -4428,6 +4668,146 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TentativaResumoResponse"
+            }
+          }
+        }
+      },
+      "PainelTurma": {
+        "type": "object",
+        "description": "Linha de uma turma ativa no painel do professor.",
+        "required": [
+          "id",
+          "nome",
+          "periodo",
+          "curso",
+          "totalAlunos",
+          "atividadesAbertas",
+          "mediaPercentual"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "periodo": {
+            "type": "string",
+            "nullable": true
+          },
+          "curso": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ItemResponse"
+              }
+            ],
+            "nullable": true
+          },
+          "totalAlunos": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "atividadesAbertas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "mediaPercentual": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "AtividadeRecentePainel": {
+        "type": "object",
+        "description": "Atividade publicada ou encerrada de uma turma ativa.",
+        "required": [
+          "id",
+          "titulo",
+          "tipo",
+          "status",
+          "totalQuestoes",
+          "duracaoMinutos",
+          "concluiram",
+          "turma",
+          "totalAlunos"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "totalQuestoes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duracaoMinutos": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "concluiram": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "turma": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "totalAlunos": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Alunos da turma da atividade."
+          }
+        }
+      },
+      "PainelProfessorResponse": {
+        "type": "object",
+        "required": [
+          "turmasAtivas",
+          "totalAlunos",
+          "atividadesAbertas",
+          "questoesNoBanco",
+          "turmas",
+          "atividades"
+        ],
+        "properties": {
+          "turmasAtivas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalAlunos": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "atividadesAbertas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "questoesNoBanco": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "turmas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PainelTurma"
+            }
+          },
+          "atividades": {
+            "type": "array",
+            "description": "As 6 publicadas mais recentes.",
+            "items": {
+              "$ref": "#/components/schemas/AtividadeRecentePainel"
             }
           }
         }

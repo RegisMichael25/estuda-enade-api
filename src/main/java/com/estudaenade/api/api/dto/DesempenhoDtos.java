@@ -31,6 +31,23 @@ public final class DesempenhoDtos {
                                       Integer mediaPercentual, List<AtividadeRecente> atividades) {
     }
 
+    /** Turma ativa no painel inicial do professor. */
+    public record PainelTurma(UUID id, String nome, String periodo, ItemResponse curso, long totalAlunos,
+                              long atividadesAbertas, Integer mediaPercentual) {
+    }
+
+    /** Atividade recente no painel inicial, com a turma a que pertence. */
+    public record AtividadeRecentePainel(UUID id, String titulo, String tipo, String status, int totalQuestoes,
+                                         Integer duracaoMinutos, long concluiram, ItemResponse turma,
+                                         long totalAlunos) {
+    }
+
+    /** Painel inicial do professor: todas as turmas ativas. */
+    public record PainelProfessorResponse(long turmasAtivas, long totalAlunos, long atividadesAbertas,
+                                          long questoesNoBanco, List<PainelTurma> turmas,
+                                          List<AtividadeRecentePainel> atividades) {
+    }
+
     /** Linha do aluno nos resultados da atividade. Sem tentativa finalizada, acertos/total/tempo vêm nulos. */
     public record ResultadoAluno(UUID alunoId, String nome, long tentativas, Integer acertos, Integer total,
                                  Long tempoSegundos) {
