@@ -39,7 +39,10 @@ public class ConviteProfessor {
 
     private Instant usadoEm;
 
+    /** Nulo = não foi cancelado manualmente. */
+    private Instant invalidadoEm;
+
     public boolean disponivel(Instant agora) {
-        return usadoEm == null && expiraEm.isAfter(agora);
+        return usadoEm == null && invalidadoEm == null && expiraEm.isAfter(agora);
     }
 }

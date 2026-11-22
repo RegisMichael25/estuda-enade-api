@@ -7,6 +7,8 @@ import com.estudaenade.api.api.dto.CadastroProfessorDtos.ProfessorPendenteRespon
 import com.estudaenade.api.domain.service.CadastroProfessorService;
 import com.estudaenade.api.infra.security.UsuarioLogado;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -41,5 +43,11 @@ public class ProfessorCadastroController implements ProfessorCadastroApi {
     @Override
     public ConviteCriadoResponse criarConvite() {
         return cadastroProfessorService.criarConvite(UsuarioLogado.atual().id());
+    }
+
+    /** Invalida manualmente um convite ativo. */
+    @PostMapping("/api/v1/professor/convites/{conviteId}/invalidar")
+    public ConviteResponse invalidarConvite(@PathVariable UUID conviteId) {
+        return cadastroProfessorService.invalidarConvite(UsuarioLogado.atual().id(), conviteId);
     }
 }

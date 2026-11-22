@@ -24,10 +24,11 @@ public final class CadastroProfessorDtos {
 
     /** Convite na listagem de quem criou, sem o código. */
     public record ConviteResponse(UUID id, Instant criadoEm, Instant expiraEm, boolean usado, String usadoPor,
-                                  Instant usadoEm) {
+                                  Instant usadoEm, boolean invalidado, Instant invalidadoEm) {
         public static ConviteResponse de(ConviteProfessor c) {
             return new ConviteResponse(c.getId(), c.getCriadoEm(), c.getExpiraEm(), c.getUsadoEm() != null,
-                    c.getUsadoPor() == null ? null : c.getUsadoPor().getNome(), c.getUsadoEm());
+                    c.getUsadoPor() == null ? null : c.getUsadoPor().getNome(), c.getUsadoEm(),
+                    c.getInvalidadoEm() != null, c.getInvalidadoEm());
         }
     }
 }
