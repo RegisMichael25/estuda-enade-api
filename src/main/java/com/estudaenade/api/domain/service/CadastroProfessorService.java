@@ -22,23 +22,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-/**
- * Quem pode atuar como professor. O papel dá acesso ao gabarito de todo o banco de questões, então
- * o cadastro passa por três camadas:
- * <ol>
- *   <li>convite de uso único, criado por um professor aprovado → entra aprovado;</li>
- *   <li>e-mail de um domínio institucional ({@code cadastro.professor.dominios-email}) → entra aprovado;</li>
- *   <li>nos demais casos a conta é criada pendente e só acessa as rotas do professor depois que um
- *       professor aprovado liberar.</li>
- * </ol>
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class CadastroProfessorService {
 
-    // Sem I, O, 0 e 1: evita confusão ao digitar o código
     private static final String ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final int TAMANHO_CODIGO = 10;
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -52,12 +41,11 @@ public class CadastroProfessorService {
     @Value("${cadastro.professor.convite-validade-dias:7}")
     private long validadeConviteDias;
 
+    @Value("${cadastro.professor.convite-cooldown-minutos:5}")
+    private long cooldownConviteMinutos;
+
     // ======================== cadastro ========================
 
-    /**
-     * Cria a conta do professor. Convite informado e inválido recusa o cadastro (em vez de criar a conta
-     * pendente em silêncio), para a pessoa poder corrigir o código.
-     */
     public Usuario cadastrar(String nome, String email, String codigoConvite) {
         Instant agora = Instant.now();
         ConviteProfessor convite = null;
@@ -91,7 +79,6 @@ public class CadastroProfessorService {
                 .map(ProfessorPendenteResponse::de).toList();
     }
 
-    /** Libera um professor pendente. Ele precisa renovar a sessão para o acesso valer. Repetir não gera erro. */
     public ProfessorPendenteResponse aprovar(UUID aprovadorId, UUID professorId) {
         Usuario aprovador = aprovado(aprovadorId);
         Usuario professor = usuarioRepository.findById(professorId)
@@ -110,13 +97,53 @@ public class CadastroProfessorService {
 
     public ConviteCriadoResponse criarConvite(UUID professorId) {
         Usuario criador = aprovado(professorId);
+        Instant agora = Instant.now();
+
+        List<ConviteProfessor> existentes = conviteRepository.findByCriadoPorIdOrderByCriadoEmDesc(professorId);
+
+        boolean temConviteAtivo = existentes.stream().anyMatch(c -> c.disponivel(agora));
+        if (temConviteAtivo) {
+            throw ApiException.regra("CONVITE_ATIVO_EXISTENTE",
+                    "Você já possui um convite ativo. Invalide o convite atual antes de gerar um novo.");
+        }
+
+        if (!existentes.isEmpty()) {
+            ConviteProfessor ultimo = existentes.get(0);
+            Instant liberadoEm = ultimo.getCriadoEm().plus(Duration.ofMinutes(cooldownConviteMinutos));
+            if (agora.isBefore(liberadoEm)) {
+                long segundosRestantes = Math.max(1, Duration.between(agora, liberadoEm).getSeconds());
+                long minutos = segundosRestantes / 60;
+                long segundos = segundosRestantes % 60;
+                throw ApiException.regra("CONVITE_COOLDOWN",
+                        String.format("Aguarde %dm%02ds antes de gerar um novo convite.", minutos, segundos));
+            }
+        }
+
         String codigo = novoCodigo();
         ConviteProfessor convite = conviteRepository.save(ConviteProfessor.builder()
                 .codigoHash(hash(codigo))
                 .criadoPor(criador)
-                .expiraEm(Instant.now().plus(Duration.ofDays(validadeConviteDias)))
+                .criadoEm(agora)
+                .expiraEm(agora.plus(Duration.ofDays(validadeConviteDias)))
                 .build());
         return new ConviteCriadoResponse(convite.getId(), codigo, convite.getExpiraEm());
+    }
+
+    public ConviteResponse invalidarConvite(UUID professorId, UUID conviteId) {
+        aprovado(professorId);
+        ConviteProfessor convite = conviteRepository.findById(conviteId)
+                .filter(c -> c.getCriadoPor().getId().equals(professorId))
+                .orElseThrow(() -> ApiException.naoEncontrado("Convite não encontrado."));
+
+        Instant agora = Instant.now();
+        if (!convite.disponivel(agora)) {
+            throw ApiException.regra("CONVITE_NAO_DISPONIVEL",
+                    "Este convite já foi utilizado, expirado ou invalidado.");
+        }
+
+        convite.setInvalidadoEm(agora);
+        log.info("Convite {} invalidado pelo professor {}", convite.getId(), professorId);
+        return ConviteResponse.de(convite);
     }
 
     @Transactional(readOnly = true)
@@ -127,21 +154,18 @@ public class CadastroProfessorService {
 
     // ======================== apoio ========================
 
-    /** Confere no banco (e não só no token) que quem aprova ou convida é um professor aprovado. */
     private Usuario aprovado(UUID professorId) {
         return usuarioRepository.findById(professorId)
                 .filter(u -> u.getPapel() == Papel.PROFESSOR && u.isAprovado())
                 .orElseThrow(() -> ApiException.acessoNegado("Somente professores aprovados podem fazer isso."));
     }
 
-    /** O domínio precisa ser exatamente um dos configurados (subdomínio ou sufixo parecido não vale). */
     private boolean dominioInstitucional(String email) {
         String dominio = email.substring(email.lastIndexOf('@') + 1);
         return dominiosInstitucionais.stream().map(String::trim).filter(d -> !d.isEmpty())
                 .anyMatch(d -> d.equalsIgnoreCase(dominio));
     }
 
-    /** Ex.: K7M2Q-9XWPA */
     private static String novoCodigo() {
         StringBuilder sb = new StringBuilder(TAMANHO_CODIGO + 1);
         for (int i = 0; i < TAMANHO_CODIGO; i++) {
@@ -151,7 +175,6 @@ public class CadastroProfessorService {
         return sb.toString();
     }
 
-    /** Aceita o código com ou sem hífen, em maiúsculas ou minúsculas. */
     private static String hash(String codigo) {
         return CodigoAcessoService.hash("convite-professor",
                 codigo.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", ""));
