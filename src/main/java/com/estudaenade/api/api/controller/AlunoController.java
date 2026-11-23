@@ -1,6 +1,10 @@
 package com.estudaenade.api.api.controller;
 
 import com.estudaenade.api.api.contrato.AlunoApi;
+import com.estudaenade.api.api.contrato.dto.ComentarioRequest;
+import com.estudaenade.api.api.dto.ComentarioDtos.ComentarioResponse;
+import com.estudaenade.api.api.dto.ComentarioDtos.MuralResponse;
+import com.estudaenade.api.domain.service.ComentarioService;
 import com.estudaenade.api.api.contrato.dto.EntrarTurmaRequest;
 import com.estudaenade.api.api.contrato.dto.ResponderRequest;
 import com.estudaenade.api.api.contrato.dto.SinalizacaoRequest;
@@ -34,6 +38,7 @@ import java.util.UUID;
 public class AlunoController implements AlunoApi {
 
     private final TurmaService turmaService;
+    private final ComentarioService comentarioService;
     private final TentativaService tentativaService;
     private final QuestaoService questaoService;
     private final PraticaService praticaService;
@@ -130,6 +135,28 @@ public class AlunoController implements AlunoApi {
     @Override
     public DesempenhoAlunoResponse meuDesempenho() {
         return desempenhoService.doAluno(aluno());
+    }
+
+    // ---------- mural de comentários ----------
+
+    @Override
+    public MuralResponse muralDaAtividadeComoAluno(UUID atividadeId) {
+        return comentarioService.mural(UsuarioLogado.atual(), atividadeId);
+    }
+
+    @Override
+    public ComentarioResponse comentarNaAtividadeComoAluno(UUID atividadeId, ComentarioRequest req) {
+        return comentarioService.comentar(UsuarioLogado.atual(), atividadeId, req.getTexto());
+    }
+
+    @Override
+    public ComentarioResponse editarComentarioComoAluno(UUID comentarioId, ComentarioRequest req) {
+        return comentarioService.editar(UsuarioLogado.atual(), comentarioId, req.getTexto());
+    }
+
+    @Override
+    public void apagarComentarioComoAluno(UUID comentarioId) {
+        comentarioService.apagar(UsuarioLogado.atual(), comentarioId);
     }
 
     private static UUID aluno() {

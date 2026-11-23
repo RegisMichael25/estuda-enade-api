@@ -209,6 +209,8 @@
 								<schemaMapping>AtividadeRecentePainel=com.estudaenade.api.api.dto.DesempenhoDtos.AtividadeRecentePainel</schemaMapping>
 								<schemaMapping>PainelProfessorResponse=com.estudaenade.api.api.dto.DesempenhoDtos.PainelProfessorResponse</schemaMapping>
 								<schemaMapping>ResultadoAluno=com.estudaenade.api.api.dto.DesempenhoDtos.ResultadoAluno</schemaMapping>
+								<schemaMapping>ComentarioResponse=com.estudaenade.api.api.dto.ComentarioDtos.ComentarioResponse</schemaMapping>
+								<schemaMapping>MuralResponse=com.estudaenade.api.api.dto.ComentarioDtos.MuralResponse</schemaMapping>
 								<schemaMapping>ResultadosAtividadeResponse=com.estudaenade.api.api.dto.DesempenhoDtos.ResultadosAtividadeResponse</schemaMapping>
 								<schemaMapping>DesempenhoAlunoTurmaResponse=com.estudaenade.api.api.dto.DesempenhoDtos.DesempenhoAlunoTurmaResponse</schemaMapping>
 							</schemaMappings>

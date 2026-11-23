@@ -16,6 +16,8 @@ public interface TentativaRepository extends JpaRepository<Tentativa, UUID> {
 
     long countByAtividadeIdAndAlunoId(UUID atividadeId, UUID alunoId);
 
+    boolean existsByAtividadeIdAndAlunoIdAndFinalizadaEmIsNotNull(UUID atividadeId, UUID alunoId);
+
     List<Tentativa> findByAlunoIdOrderByIniciadaEmDesc(UUID alunoId);
 
     List<Tentativa> findByFinalizadaEmIsNullAndExpiraEmLessThanEqual(Instant agora);
