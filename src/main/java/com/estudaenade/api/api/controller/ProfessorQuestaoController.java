@@ -22,13 +22,19 @@ public class ProfessorQuestaoController implements ProfessorQuestaoApi {
 
     private final QuestaoService questaoService;
 
+    /** Anos das questões visíveis no banco, para o filtro. */
+    @Override
+    public List<Integer> anosDoBanco(UUID cursoId) {
+        return questaoService.anosDoBanco(professor(), cursoId);
+    }
+
     /** Publicadas de todos os professores + as minhas em qualquer estado. */
     @Override
-    public Pagina<QuestaoResponse> listarQuestoes(Boolean minhas, UUID cursoId, UUID temaId, Integer ano,
+    public Pagina<QuestaoResponse> listarQuestoes(Boolean minhas, UUID cursoId, UUID temaId, Integer ano, String busca,
                                                   StatusQuestao status, Boolean sinalizadas,
                                                   Integer pagina, Integer tamanho) {
         return questaoService.listar(professor(),
-                new QuestaoService.Filtro(minhas, cursoId, temaId, ano, status, sinalizadas), pagina, tamanho);
+                new QuestaoService.Filtro(minhas, cursoId, temaId, ano, busca, status, sinalizadas), pagina, tamanho);
     }
 
     /** Salva como rascunho. */

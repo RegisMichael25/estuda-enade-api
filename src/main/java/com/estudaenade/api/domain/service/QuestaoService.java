@@ -37,10 +37,14 @@ public class QuestaoService {
     private final TemaRepository temaRepository;
     private final UsuarioRepository usuarioRepository;
 
-    /** Filtros do banco. Campos nulos não filtram. */
-    public record Filtro(Boolean minhas, UUID cursoId, UUID temaId, Integer ano, StatusQuestao status,
-                         Boolean sinalizadas) {
+    /** Filtros do banco. Campos nulos (e busca em branco) não filtram. */
+    public record Filtro(Boolean minhas, UUID cursoId, UUID temaId, Integer ano, String busca,
+                         StatusQuestao status, Boolean sinalizadas) {
     }
+
+    /** Letras acentuadas e as equivalentes sem acento, na mesma posição (para o {@code translate} do Postgres). */
+    private static final String COM_ACENTO = "áàâãäéèêëíìîïóòôõöúùûüçñ";
+    private static final String SEM_ACENTO = "aaaaaeeeeiiiiooooouuuucn";
 
     // ======================== professor ========================
 
@@ -95,7 +99,7 @@ public class QuestaoService {
             }
             if (f.status() != null) ps.add(cb.equal(root.get("status"), f.status()));
             if (Boolean.TRUE.equals(f.sinalizadas())) ps.add(cb.greaterThan(root.get("sinalizacoesAbertas"), 0L));
-            filtrosComuns(ps, root, cb, f.cursoId(), f.temaId(), f.ano());
+            filtrosComuns(ps, root, cb, f.cursoId(), f.temaId(), f.ano(), f.busca());
             return cb.and(ps.toArray(Predicate[]::new));
         };
         var page = questaoRepository.findAll(spec, pagina(pagina, tamanho, Sort.by(Sort.Direction.DESC, "atualizadaEm")));
@@ -143,25 +147,34 @@ public class QuestaoService {
      * responder em uma atividade: a prática devolve o gabarito na hora e entregaria a resposta da atividade.
      */
     @Transactional(readOnly = true)
-    public Pagina<QuestaoAlunoResponse> listarParaPratica(UUID alunoId, UUID cursoId, UUID temaId, Integer ano,
+    public Pagina<QuestaoAlunoResponse> listarParaPratica(UUID alunoId, UUID cursoId, UUID temaId, Integer ano, String busca,
                                                           int pagina, int tamanho) {
         List<UUID> reservadas = questaoRepository.reservadasParaAtividade(alunoId);
         Specification<Questao> spec = (root, query, cb) -> {
             List<Predicate> ps = new ArrayList<>();
             ps.add(cb.equal(root.get("status"), StatusQuestao.PUBLICADA));
             if (!reservadas.isEmpty()) ps.add(cb.not(root.get("id").in(reservadas)));
-            filtrosComuns(ps, root, cb, cursoId, temaId, ano);
+            filtrosComuns(ps, root, cb, cursoId, temaId, ano, busca);
             return cb.and(ps.toArray(Predicate[]::new));
         };
         Sort ordem = Sort.by(Sort.Order.desc("ano"), Sort.Order.asc("publicadaEm"), Sort.Order.asc("id"));
         return Pagina.de(questaoRepository.findAll(spec, pagina(pagina, tamanho, ordem)), QuestaoAlunoResponse::de);
     }
 
-    /** Anos que têm questão publicada, para montar o filtro da prática livre. */
+    /** Anos que têm questão publicada (no curso, se informado), para o filtro da prática livre. */
     @Transactional(readOnly = true)
-    public List<Integer> anosDisponiveis() {
-        return questaoRepository.findAll((root, query, cb) -> cb.equal(root.get("status"), StatusQuestao.PUBLICADA))
-                .stream().map(Questao::getAno).distinct().sorted((a, b) -> b - a).toList();
+    public List<Integer> anosDisponiveis(UUID cursoId) {
+        return cursoId == null
+                ? questaoRepository.anosComStatus(StatusQuestao.PUBLICADA)
+                : questaoRepository.anosComStatusNoCurso(StatusQuestao.PUBLICADA, cursoId);
+    }
+
+    /** Anos das questões que o professor vê no banco (no curso, se informado), para o filtro do banco. */
+    @Transactional(readOnly = true)
+    public List<Integer> anosDoBanco(UUID professorId, UUID cursoId) {
+        return cursoId == null
+                ? questaoRepository.anosVisiveisAoProfessor(StatusQuestao.PUBLICADA, professorId)
+                : questaoRepository.anosVisiveisAoProfessorNoCurso(StatusQuestao.PUBLICADA, professorId, cursoId);
     }
 
     public Questao publicada(UUID questaoId) {
@@ -245,10 +258,29 @@ public class QuestaoService {
 
     private static void filtrosComuns(List<Predicate> ps, jakarta.persistence.criteria.Root<Questao> root,
                                       jakarta.persistence.criteria.CriteriaBuilder cb,
-                                      UUID cursoId, UUID temaId, Integer ano) {
+                                      UUID cursoId, UUID temaId, Integer ano, String busca) {
         if (cursoId != null) ps.add(cb.equal(root.get("curso").get("id"), cursoId));
         if (temaId != null) ps.add(cb.equal(root.get("tema").get("id"), temaId));
         if (ano != null) ps.add(cb.equal(root.get("ano"), ano));
+        String trecho = normalizar(busca);
+        if (!trecho.isEmpty()) {
+            // Compara os dois lados sem maiúsculas e sem acento: "matematica" acha "Matemática"
+            jakarta.persistence.criteria.Expression<String> enunciado = cb.function("translate", String.class,
+                    cb.lower(root.get("enunciado")), cb.literal(COM_ACENTO), cb.literal(SEM_ACENTO));
+            ps.add(cb.like(enunciado, "%" + escaparLike(trecho) + "%", '\\'));
+        }
+    }
+
+    /** Minúsculas, sem acento e sem espaços nas pontas; {@code null} vira texto vazio. */
+    private static String normalizar(String texto) {
+        if (texto == null) return "";
+        return java.text.Normalizer.normalize(texto.trim().toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+    }
+
+    /** O que o usuário digita é texto literal: % e _ não viram curinga. */
+    private static String escaparLike(String texto) {
+        return texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private static PageRequest pagina(int pagina, int tamanho, Sort ordem) {

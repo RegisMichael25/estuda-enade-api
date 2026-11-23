@@ -1361,6 +1361,16 @@
             }
           },
           {
+            "name": "busca",
+            "in": "query",
+            "required": false,
+            "description": "Trecho do enunciado. Ignora maiúsculas e acentos.",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
@@ -1465,6 +1475,57 @@
           },
           "422": {
             "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/questoes/anos": {
+      "get": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "anosDoBanco",
+        "summary": "Anos das questões que o professor vê no banco, do mais recente ao mais antigo",
+        "description": "Mesma visibilidade da listagem: publicadas de todos e as do próprio professor em qualquer estado.",
+        "parameters": [
+          {
+            "name": "cursoId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Só os anos de questões deste curso."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3386,7 +3447,19 @@
           "Aluno"
         ],
         "operationId": "anosDaPratica",
-        "summary": "Anos com questões publicadas",
+        "summary": "Anos com questões publicadas, do mais recente ao mais antigo",
+        "parameters": [
+          {
+            "name": "cursoId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Só os anos de questões deste curso."
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK.",
@@ -3452,6 +3525,16 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          },
+          {
+            "name": "busca",
+            "in": "query",
+            "required": false,
+            "description": "Trecho do enunciado. Ignora maiúsculas e acentos.",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
             }
           },
           {
