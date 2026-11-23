@@ -35,9 +35,6 @@ public class CadastroProfessorService {
     private final UsuarioRepository usuarioRepository;
     private final ConviteProfessorRepository conviteRepository;
 
-    @Value("${cadastro.professor.dominios-email:}")
-    private List<String> dominiosInstitucionais;
-
     @Value("${cadastro.professor.convite-validade-dias:7}")
     private long validadeConviteDias;
 
@@ -46,7 +43,12 @@ public class CadastroProfessorService {
 
     // ======================== cadastro ========================
 
-    public Usuario cadastrar(String nome, String email, String codigoConvite) {
+    /**
+     * Grava o professor já montado pelo cadastro (nome, e-mail, senha, Google). Entra aprovado só com convite válido;
+     * sem convite fica pendente até um professor aprovado liberar. O domínio do e-mail não aprova ninguém: alunos
+     * também têm e-mail institucional.
+     */
+    public Usuario cadastrar(Usuario professor, String codigoConvite) {
         Instant agora = Instant.now();
         ConviteProfessor convite = null;
         if (codigoConvite != null && !codigoConvite.isBlank()) {
@@ -55,19 +57,18 @@ public class CadastroProfessorService {
                     .orElseThrow(() -> ApiException.regra("CONVITE_INVALIDO",
                             "Convite inválido, expirado ou já utilizado. Peça outro a um professor."));
         }
-        boolean aprovado = convite != null || dominioInstitucional(email);
-        Usuario professor = usuarioRepository.save(Usuario.builder()
-                .nome(nome).email(email).papel(Papel.PROFESSOR)
-                .aprovado(aprovado)
-                .aprovadoEm(aprovado ? agora : null)
-                .aprovadoPor(convite == null ? null : convite.getCriadoPor())
-                .build());
+        boolean aprovado = convite != null;
+        professor.setPapel(Papel.PROFESSOR);
+        professor.setAprovado(aprovado);
+        professor.setAprovadoEm(aprovado ? agora : null);
+        professor.setAprovadoPor(convite == null ? null : convite.getCriadoPor());
+        professor = usuarioRepository.save(professor);
         if (convite != null) {
             convite.setUsadoPor(professor);
             convite.setUsadoEm(agora);
         }
         log.info("Professor {} cadastrado: {}", professor.getId(),
-                convite != null ? "aprovado por convite" : aprovado ? "aprovado pelo domínio do e-mail" : "pendente de aprovação");
+                aprovado ? "aprovado por convite" : "pendente de aprovação");
         return professor;
     }
 
@@ -158,12 +159,6 @@ public class CadastroProfessorService {
         return usuarioRepository.findById(professorId)
                 .filter(u -> u.getPapel() == Papel.PROFESSOR && u.isAprovado())
                 .orElseThrow(() -> ApiException.acessoNegado("Somente professores aprovados podem fazer isso."));
-    }
-
-    private boolean dominioInstitucional(String email) {
-        String dominio = email.substring(email.lastIndexOf('@') + 1);
-        return dominiosInstitucionais.stream().map(String::trim).filter(d -> !d.isEmpty())
-                .anyMatch(d -> d.equalsIgnoreCase(dominio));
     }
 
     private static String novoCodigo() {

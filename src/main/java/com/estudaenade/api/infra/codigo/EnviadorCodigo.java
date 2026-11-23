@@ -1,6 +1,6 @@
 package com.estudaenade.api.infra.codigo;
 
-/** Entrega o código de acesso ao usuário. */
+/** Entrega ao usuário o código para redefinir a senha. */
 public interface EnviadorCodigo {
     void enviar(String email, String codigo, int validadeMinutos);
 }

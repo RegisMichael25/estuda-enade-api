@@ -11,7 +11,7 @@ public final class CadastroProfessorDtos {
     private CadastroProfessorDtos() {
     }
 
-    /** Professor que se cadastrou sem convite e sem e-mail institucional e aguarda aprovação. */
+    /** Professor que se cadastrou sem convite e aguarda aprovação. */
     public record ProfessorPendenteResponse(UUID id, String nome, String email, boolean aprovado, Instant criadoEm) {
         public static ProfessorPendenteResponse de(Usuario u) {
             return new ProfessorPendenteResponse(u.getId(), u.getNome(), u.getEmail(), u.isAprovado(), u.getCriadoEm());

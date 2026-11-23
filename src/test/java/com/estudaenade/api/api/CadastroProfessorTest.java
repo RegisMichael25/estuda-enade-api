@@ -4,22 +4,23 @@ import com.estudaenade.api.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.ResultActions;
 
+import static com.estudaenade.api.support.GoogleFalsoConfiguration.token;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Quem pode atuar como professor: convite, domínio institucional ou aprovação de outro professor. */
+/** Quem pode atuar como professor: só com convite ou com a aprovação de um professor já aprovado. */
 class CadastroProfessorTest extends IntegrationTest {
 
-    /** E-mail fora do domínio institucional dos testes (teste.dev). */
     private static final String EMAIL_COMUM = "carla@email-comum.test";
+    private static final String EMAIL_INSTITUCIONAL = "bia@teste.dev";
 
     @Test
     void professorDeEmailComumFicaPendenteAteOutroProfessorAprovar() throws Exception {
         String aprovador = professor();
 
         ResultActions sessao = cadastrar(EMAIL_COMUM, "PROFESSOR", "Carla", null)
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.papel").value("PROFESSOR"))
                 .andExpect(jsonPath("$.usuario.aprovado").value(false));
         String pendente = ler(sessao, "$.accessToken");
@@ -63,9 +64,9 @@ class CadastroProfessorTest extends IntegrationTest {
                 .andExpect(jsonPath("$.codigo").isNotEmpty());
         String convite = ler(criado, "$.codigo");
 
-        // aceita minúsculas e sem hífen
+        // aceita minúsculas e sem hífen; com senha e e-mail não comprovado, o convite basta
         ResultActions sessao = cadastrar(EMAIL_COMUM, "PROFESSOR", "Carla", convite.replace("-", "").toLowerCase())
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.aprovado").value(true));
         get("/api/v1/professor/questoes", ler(sessao, "$.accessToken")).andExpect(status().isOk());
 
@@ -80,10 +81,18 @@ class CadastroProfessorTest extends IntegrationTest {
         cadastrar(outro, "PROFESSOR", "Diego", convite)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("CONVITE_INVALIDO"));
-        // a conta não foi criada e o código de acesso não foi gasto: sem convite, ele entra pendente
-        entrar(outro, "PROFESSOR", "Diego", null)
-                .andExpect(status().isOk())
+        // a conta não foi criada: sem convite, o mesmo e-mail se cadastra (pendente)
+        cadastrar(outro, "PROFESSOR", "Diego", null)
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.aprovado").value(false));
+    }
+
+    @Test
+    void conviteTambemAprovaNoCadastroComGoogle() throws Exception {
+        String convite = ler(post("/api/v1/professor/convites", professor(), null), "$.codigo");
+        cadastrarComGoogle(token("sub-carla", EMAIL_COMUM, "Carla"), "PROFESSOR", "Carla", convite)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.usuario.aprovado").value(true));
     }
 
     @Test
@@ -95,26 +104,56 @@ class CadastroProfessorTest extends IntegrationTest {
 
         String convite = ler(post("/api/v1/professor/convites", anfitriao, null), "$.codigo");
         jdbc.update("update convite_professor set expira_em = now() - interval '1 minute'");
-        entrar(EMAIL_COMUM, "PROFESSOR", "Carla", convite)
+        cadastrar(EMAIL_COMUM, "PROFESSOR", "Carla", convite)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("CONVITE_INVALIDO"));
     }
 
+    /** Alunos também têm e-mail institucional: nem o domínio nem a comprovação do e-mail aprovam o professor. */
     @Test
-    void emailInstitucionalEntraAprovadoMasDominioParecidoNao() throws Exception {
-        cadastrar("bia@teste.dev", "PROFESSOR", "Bia", null)
+    void emailInstitucionalNaoAprovaPorNenhumCaminho() throws Exception {
+        String pendente = ler(cadastrar(EMAIL_INSTITUCIONAL, "PROFESSOR", "Bia", null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.usuario.aprovado").value(false)), "$.accessToken");
+
+        // trocar a senha logado (o código comprova o e-mail)
+        post("/api/v1/eu/senha/codigo", pendente, null).andExpect(status().isNoContent());
+        put("/api/v1/eu/senha", pendente, "{\"codigo\":\"%s\",\"novaSenha\":\"nova-senha-2\"}".formatted(CODIGO))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.usuario.aprovado").value(true));
-        cadastrar("bia@falso-teste.dev", "PROFESSOR", "Bia", null)
                 .andExpect(jsonPath("$.usuario.aprovado").value(false));
-        cadastrar("bia@teste.dev.exemplo.test", "PROFESSOR", "Bia", null)
+
+        // redefinir a senha pelo "esqueci a senha"
+        post("/api/v1/auth/senha/codigo", null, "{\"email\":\"%s\"}".formatted(EMAIL_INSTITUCIONAL))
+                .andExpect(status().isNoContent());
+        post("/api/v1/auth/senha/redefinir", null, "{\"email\":\"%s\",\"codigo\":\"%s\",\"novaSenha\":\"nova-senha-3\"}"
+                .formatted(EMAIL_INSTITUCIONAL, CODIGO)).andExpect(status().isNoContent());
+        entrar(EMAIL_INSTITUCIONAL, "nova-senha-3").andExpect(jsonPath("$.usuario.aprovado").value(false));
+
+        // entrar com Google (e-mail comprovado pelo Google)
+        entrarComGoogle(token("sub-bia", EMAIL_INSTITUCIONAL, "Bia"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario.aprovado").value(false));
+
+        // cadastrar com Google
+        cadastrarComGoogle(token("sub-rui", "rui@teste.dev", "Rui"), "PROFESSOR", "Rui", null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.usuario.aprovado").value(false));
+    }
+
+    @Test
+    void professorPendentePodeTrocarASenhaComOCodigo() throws Exception {
+        String pendente = ler(cadastrar(EMAIL_COMUM, "PROFESSOR", "Carla", null), "$.accessToken");
+        post("/api/v1/eu/senha/codigo", pendente, null).andExpect(status().isNoContent());
+        put("/api/v1/eu/senha", pendente, "{\"codigo\":\"%s\",\"novaSenha\":\"nova-senha-2\"}".formatted(CODIGO))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usuario.aprovado").value(false));
+        entrar(EMAIL_COMUM, "nova-senha-2").andExpect(status().isOk());
     }
 
     @Test
     void alunoNaoPrecisaDeAprovacaoENaoAprovaProfessor() throws Exception {
         ResultActions sessao = cadastrar("ana@email-comum.test", "ALUNO", "Ana", null)
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.aprovado").value(true));
         String ana = ler(sessao, "$.accessToken");
         get("/api/v1/aluno/atividades", ana).andExpect(status().isOk());

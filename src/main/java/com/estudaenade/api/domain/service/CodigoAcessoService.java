@@ -18,7 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 
-/** Códigos de uso único enviados por e-mail (login sem senha). */
+/** Códigos de uso único enviados por e-mail para redefinir a senha. Também comprovam o dono do e-mail. */
 @Service
 @RequiredArgsConstructor
 public class CodigoAcessoService {
@@ -44,12 +44,16 @@ public class CodigoAcessoService {
     @Value("${otp.codigo-fixo:}")
     private String codigoFixo;
 
+    /**
+     * Gera um código novo (invalidando os pendentes) e o envia se {@code enviar} for verdadeiro.
+     * Para e-mail sem conta, o pedido é registrado sem envio: assim o limite de pedidos responde igual
+     * nos dois casos e não revela quais e-mails têm conta.
+     */
     @Transactional
-    public void solicitar(String email) {
+    public void solicitar(String email, boolean enviar) {
         Instant agora = Instant.now();
         if (repository.countByEmailAndCriadoEmAfter(email, agora.minus(Duration.ofMinutes(janelaMinutos))) >= maxSolicitacoes) {
-            throw ApiException.muitasSolicitacoes("Muitos códigos solicitados. Aguarde alguns minutos e tente de novo.");
-        }
+            throw ApiException.muitasSolicitacoes("Muitos códigos solicitados. Aguarde alguns minutos e tente de novo.");        }
         repository.invalidarPendentes(email);
 
         String codigo = gerarCodigo();
@@ -59,7 +63,9 @@ public class CodigoAcessoService {
                 .expiraEm(agora.plus(Duration.ofMinutes(expiracaoMinutos)))
                 .criadoEm(agora)
                 .build());
-        enviador.enviar(email, codigo, expiracaoMinutos);
+        if (enviar) {
+            enviador.enviar(email, codigo, expiracaoMinutos);
+        }
     }
 
     /**
@@ -84,7 +90,7 @@ public class CodigoAcessoService {
         }
     }
 
-    /** Depois de um login concluído, o código não pode ser reutilizado. */
+    /** Depois da senha redefinida, o código não pode ser reutilizado. */
     @Transactional
     public void consumir(String email) {
         repository.invalidarPendentes(email);

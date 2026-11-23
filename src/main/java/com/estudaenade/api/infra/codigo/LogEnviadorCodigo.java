@@ -13,7 +13,7 @@ public class LogEnviadorCodigo implements EnviadorCodigo {
     @Override
     public void enviar(String email, String codigo, int validadeMinutos) {
         log.info("============================================");
-        log.info("  CÓDIGO DE ACESSO PARA {}: {}", email, codigo);
+        log.info("  CÓDIGO PARA REDEFINIR A SENHA DE {}: {}", email, codigo);
         log.info("============================================");
     }
 }

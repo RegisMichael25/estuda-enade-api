@@ -40,12 +40,20 @@ class ValidacaoDeRequisicaoTest extends IntegrationTest {
 
     @Test
     void emailInvalidoEPapelDesconhecidoSaoRecusados() throws Exception {
-        post("/api/v1/auth/codigo", null, "{\"email\":\"nao-e-email\"}")
+        post("/api/v1/auth/senha/codigo", null, "{\"email\":\"nao-e-email\"}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACAO"));
-        post("/api/v1/auth/entrar", null, "{\"email\":\"a@teste.dev\",\"codigo\":\"1\",\"nome\":\"A\",\"papel\":\"ADMIN\"}")
+        post("/api/v1/auth/entrar", null, "{\"email\":\"nao-e-email\",\"senha\":\"x\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.campos.email").isNotEmpty());
+        post("/api/v1/auth/cadastrar", null,
+                "{\"nome\":\"A\",\"email\":\"a@teste.dev\",\"senha\":\"%s\",\"papel\":\"ADMIN\"}".formatted(SENHA))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("REQUISICAO_INVALIDA"));
+        post("/api/v1/auth/cadastrar", null, "{\"nome\":\"   \",\"email\":\"a@teste.dev\",\"senha\":\"%s\",\"papel\":\"ALUNO\"}"
+                .formatted(SENHA))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.campos.nome").isNotEmpty());
     }
 
     @Test

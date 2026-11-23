@@ -12,5 +12,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
 
     Optional<Usuario> findByEmail(String email);
 
+    Optional<Usuario> findByGoogleSub(String googleSub);
+
+    boolean existsByEmail(String email);
+
     List<Usuario> findByPapelAndAprovadoFalseOrderByCriadoEmAsc(Papel papel);
 }

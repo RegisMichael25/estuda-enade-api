@@ -17,6 +17,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
@@ -77,12 +79,21 @@ public class SecurityConfig {
         };
     }
 
-    /** Não há login por usuário e senha: evita o usuário padrão (com senha no log) que o Spring criaria. */
+    /**
+     * O login com senha é feito pela API ({@code /auth/entrar}, que emite o JWT próprio), não pelo form login do
+     * Spring. Este bean só evita o usuário padrão (com senha no log) que o Spring criaria.
+     */
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> {
             throw new UsernameNotFoundException(username);
         };
+    }
+
+    /** BCrypt, com o prefixo do algoritmo no hash ({@code {bcrypt}...}) para permitir trocá-lo no futuro. */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
     @Bean
