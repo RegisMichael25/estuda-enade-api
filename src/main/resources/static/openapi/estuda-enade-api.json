@@ -1666,6 +1666,62 @@
             "$ref": "#/components/responses/Erro"
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "ProfessorQuestao"
+        ],
+        "operationId": "excluirQuestao",
+        "summary": "Exclui a questão (só rascunho)",
+        "parameters": [
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
       }
     },
     "/api/v1/professor/questoes/{questaoId}/publicar": {

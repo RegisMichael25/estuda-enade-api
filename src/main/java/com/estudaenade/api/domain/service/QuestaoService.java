@@ -86,6 +86,15 @@ public class QuestaoService {
         return QuestaoResponse.de(questao, autorId);
     }
 
+    /** Exclui o rascunho de questão (só o autor). */
+    public void excluirRascunho(UUID autorId, UUID questaoId) {
+        Questao questao = doAutor(questaoId, autorId);
+        if (questao.getStatus() != StatusQuestao.RASCUNHO) {
+            throw ApiException.regra("QUESTAO_NAO_RASCUNHO", "Só é possível excluir questões em rascunho.");
+        }
+        questaoRepository.delete(questao);
+    }
+
     /** Banco visto pelo professor: questões publicadas de todos + as próprias em qualquer estado. */
     @Transactional(readOnly = true)
     public Pagina<QuestaoResponse> listar(UUID professorId, Filtro f, int pagina, int tamanho) {
