@@ -54,6 +54,11 @@ public class ProfessorQuestaoController implements ProfessorQuestaoApi {
     }
 
     @Override
+    public void excluirQuestao(UUID questaoId) {
+        questaoService.excluirRascunho(professor(), questaoId);
+    }
+
+    @Override
     public QuestaoResponse publicarQuestao(UUID questaoId) {
         return questaoService.publicar(professor(), questaoId);
     }
