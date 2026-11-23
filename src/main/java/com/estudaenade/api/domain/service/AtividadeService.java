@@ -36,6 +36,7 @@ public class AtividadeService {
 
     public AtividadeResponse criar(UUID professorId, UUID turmaId, AtividadeRequest req) {
         Turma turma = turmaService.doProfessor(turmaId, professorId);
+        TurmaService.exigirAtiva(turma);
         Atividade atividade = Atividade.builder().turma(turma).titulo(req.getTitulo().trim()).tipo(req.getTipo()).build();
         aplicar(atividade, req);
         return AtividadeResponse.de(atividadeRepository.save(atividade));
@@ -55,6 +56,7 @@ public class AtividadeService {
     public AtividadeResponse publicar(UUID professorId, UUID atividadeId) {
         Atividade atividade = doProfessor(atividadeId, professorId);
         exigirRascunho(atividade);
+        TurmaService.exigirAtiva(atividade.getTurma());
         if (atividade.getQuestoes().isEmpty()) {
             throw ApiException.regra("ATIVIDADE_SEM_QUESTOES", "Adicione ao menos uma questão antes de publicar.");
         }

@@ -11,6 +11,8 @@ public interface TurmaRepository extends JpaRepository<Turma, UUID> {
 
     List<Turma> findByProfessorIdOrderByCriadaEmDesc(UUID professorId);
 
+    List<Turma> findByProfessorIdAndArquivadaEmIsNullOrderByCriadaEmDesc(UUID professorId);
+
     Optional<Turma> findByIdAndProfessorId(UUID id, UUID professorId);
 
     Optional<Turma> findByCodigoConvite(String codigoConvite);

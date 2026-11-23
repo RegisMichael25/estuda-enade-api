@@ -51,6 +51,11 @@ public class AlunoController implements AlunoApi {
         return turmaService.listarDoAluno(aluno());
     }
 
+    @Override
+    public void sairDaTurma(UUID turmaId) {
+        turmaService.sair(aluno(), turmaId);
+    }
+
     // ---------- atividades e tentativas ----------
 
     @Override

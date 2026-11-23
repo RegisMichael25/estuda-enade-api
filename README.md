@@ -124,9 +124,11 @@ Erros seguem `{ "codigo": "...", "mensagem": "..." }`.
 | GET | `/professores/pendentes` | Professores aguardando aprovação |
 | POST | `/professores/{id}/aprovar` | Aprova o cadastro de um professor pendente |
 | GET, POST | `/convites` | Meus convites de professor · gera um convite (o código só aparece na criação) |
-| GET, POST | `/turmas` | Lista · cria turma (gera o código de convite) |
+| GET | `/painel` | Painel inicial: números, turmas ativas e atividades recentes |
+| GET, POST | `/turmas` | Lista (só ativas; `?incluirArquivadas=true` traz todas) · cria turma (gera o código de convite) |
 | GET, PUT | `/turmas/{id}` | Detalhe com alunos · edita |
 | POST | `/turmas/{id}/convite` | Gera novo código; o antigo deixa de valer |
+| POST | `/turmas/{id}/arquivar`, `/reativar` | Arquiva a turma · volta a turma para a lista |
 | DELETE | `/turmas/{id}/alunos/{alunoId}` | Remove o aluno da turma |
 | GET | `/turmas/{id}/resumo` | Painel: alunos, banco, atividades abertas, média |
 | GET | `/turmas/{id}/alunos/{alunoId}/desempenho` | Desempenho do aluno nas atividades da turma |
@@ -146,6 +148,7 @@ Erros seguem `{ "codigo": "...", "mensagem": "..." }`.
 |---|---|---|
 | POST | `/turmas/entrar` | Entra na turma com o código do convite |
 | GET | `/turmas` | Minhas turmas |
+| DELETE | `/turmas/{id}` | Sai da turma (tentativas e resultados ficam guardados) |
 | GET | `/atividades`, `/atividades/{id}` | Atividades publicadas e minhas tentativas |
 | POST | `/atividades/{id}/tentativas` | Inicia a tentativa (ou retoma a que está em andamento) |
 | GET | `/tentativas` | Histórico de tentativas |
@@ -169,6 +172,7 @@ O documento de visão deixou alguns pontos em aberto. Esta versão assume:
 - **Novas tentativas:** `maxTentativas` da atividade depende do tipo. **Lista** (treino): de 1 a 5, ou `null` para ilimitadas. **Simulado**: 1 ou 2, sem ilimitadas. Fora disso, `422 TENTATIVAS_INVALIDAS` ao criar, editar ou publicar (a publicação também barra rascunhos antigos fora da regra). Atividades já publicadas não mudam. Nos resultados do professor vale a **melhor** tentativa de cada aluno.
 - **Atividade publicada não muda.** Só rascunhos podem ser editados ou excluídos.
 - **Questão:** só o autor edita, publica e oculta. Sinalização marca para revisão e não tira a questão do banco; a lista de sinalizações mostra o motivo e a data, sem identificar quem sinalizou. Questão oculta sai do banco e da prática livre, mas continua nas atividades que já a usam.
+- **Turma arquivada:** some da lista padrão do professor e da lista do aluno, não aceita novos alunos, novo convite nem novas atividades (`422 TURMA_ARQUIVADA`). As atividades publicadas passam a encerradas (tentativas em andamento seguem até o envio ou o fim do tempo). Alunos, atividades e resultados continuam guardados. Reativar devolve a turma com o mesmo código; as atividades encerradas continuam encerradas.
 - **Professor:** só atua depois de aprovado: por convite de outro professor, por e-mail de domínio institucional ou por aprovação de um professor já aprovado (veja "Cadastro de professor"). Qualquer professor aprovado pode aprovar e convidar; não há administrador nesta versão.
 
 ## Configuração

@@ -36,4 +36,11 @@ public class Turma {
     @Builder.Default
     @Column(nullable = false)
     private Instant criadaEm = Instant.now();
+
+    /** Preenchido quando o professor arquiva a turma; null enquanto ativa. */
+    private Instant arquivadaEm;
+
+    public boolean isArquivada() {
+        return arquivadaEm != null;
+    }
 }

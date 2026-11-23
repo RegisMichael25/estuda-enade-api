@@ -15,10 +15,10 @@ public final class TurmaDtos {
 
     /** Visão do professor: inclui o código de convite. */
     public record TurmaResponse(UUID id, String nome, String periodo, ItemResponse curso,
-                                String codigoConvite, long totalAlunos, Instant criadaEm) {
+                                String codigoConvite, long totalAlunos, Instant criadaEm, Instant arquivadaEm) {
         public static TurmaResponse de(Turma t, long totalAlunos) {
             return new TurmaResponse(t.getId(), t.getNome(), t.getPeriodo(), ItemResponse.de(t.getCurso()),
-                    t.getCodigoConvite(), totalAlunos, t.getCriadaEm());
+                    t.getCodigoConvite(), totalAlunos, t.getCriadaEm(), t.getArquivadaEm());
         }
     }
 
