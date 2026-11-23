@@ -79,10 +79,7 @@ public class SecurityConfig {
         };
     }
 
-    /**
-     * O login com senha é feito pela API ({@code /auth/entrar}, que emite o JWT próprio), não pelo form login do
-     * Spring. Este bean só evita o usuário padrão (com senha no log) que o Spring criaria.
-     */
+    /** O login com senha é o /auth/entrar (JWT próprio): este bean só evita o usuário padrão do Spring. */
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> {
@@ -90,7 +87,6 @@ public class SecurityConfig {
         };
     }
 
-    /** BCrypt, com o prefixo do algoritmo no hash ({@code {bcrypt}...}) para permitir trocá-lo no futuro. */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();

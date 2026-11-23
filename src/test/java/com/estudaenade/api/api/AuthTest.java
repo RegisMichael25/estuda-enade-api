@@ -8,7 +8,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Cadastro e login com e-mail e senha, bloqueio por tentativas, "esqueci a senha" e troca de senha. */
 class AuthTest extends IntegrationTest {
 
     private static final String EMAIL = "ana@teste.dev";
@@ -57,7 +56,6 @@ class AuthTest extends IntegrationTest {
         get("/api/v1/eu", ler(sessao, "$.accessToken"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value(EMAIL));
-        // a senha não é guardada em texto puro
         String hash = jdbc.queryForObject("select senha_hash from usuario where email = ?", String.class, EMAIL);
         assertThat(hash).startsWith("{bcrypt}").doesNotContain(SENHA);
     }
@@ -72,18 +70,16 @@ class AuthTest extends IntegrationTest {
 
     @Test
     void senhaForaDaPoliticaERecusada() throws Exception {
-        // sem número / sem letra
         cadastrarComSenha("somenteletras").andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("SENHA_FRACA"));
         cadastrarComSenha("1234567890").andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("SENHA_FRACA"));
-        // curta demais: barrada já na validação do contrato
+        // curta: barrada na validação do contrato
         cadastrarComSenha("abc12").andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.campos.senha").isNotEmpty());
-        // 38 caracteres, mas 74 bytes em UTF-8: passa do limite do BCrypt
+        // 38 caracteres, mas 74 bytes
         cadastrarComSenha("a1" + "é".repeat(36)).andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("SENHA_FRACA"));
-        // exatamente 72 bytes vale
         cadastrarComSenha("a1" + "é".repeat(35)).andExpect(status().isCreated());
     }
 
@@ -134,10 +130,8 @@ class AuthTest extends IntegrationTest {
         entrar(EMAIL, "senha-errada-9")
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.codigo").value("MUITAS_TENTATIVAS"));
-        // bloqueada, nem a senha certa entra
         entrar(EMAIL, SENHA).andExpect(status().isTooManyRequests());
 
-        // passado o bloqueio, a senha certa volta a funcionar e zera o contador
         jdbc.update("update usuario set bloqueado_ate = now() - interval '1 second'");
         entrar(EMAIL, SENHA).andExpect(status().isOk());
         assertThat(jdbc.queryForObject("select falhas_login from usuario", Integer.class)).isZero();
@@ -150,7 +144,7 @@ class AuthTest extends IntegrationTest {
             entrar(EMAIL, "senha-errada-9").andExpect(status().isUnauthorized());
         }
         entrar(EMAIL, SENHA).andExpect(status().isOk());
-        entrar(EMAIL, "senha-errada-9").andExpect(status().isUnauthorized()); // conta de novo do zero
+        entrar(EMAIL, "senha-errada-9").andExpect(status().isUnauthorized());
         entrar(EMAIL, SENHA).andExpect(status().isOk());
     }
 
@@ -166,7 +160,6 @@ class AuthTest extends IntegrationTest {
         renovar(refreshAntigo).andExpect(status().isUnauthorized());
         entrar(EMAIL, SENHA).andExpect(status().isUnauthorized());
         entrar(EMAIL, NOVA_SENHA).andExpect(status().isOk());
-        // o código não vale de novo
         redefinir(EMAIL, CODIGO, "terceira-senha-3")
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.codigo").value("CODIGO_INVALIDO"));
@@ -221,7 +214,6 @@ class AuthTest extends IntegrationTest {
         for (int i = 0; i < 5; i++) {
             redefinir(EMAIL, "000000", NOVA_SENHA).andExpect(status().isUnauthorized());
         }
-        // depois de 5 erros nem o código certo funciona
         redefinir(EMAIL, CODIGO, NOVA_SENHA).andExpect(status().isUnauthorized());
         entrar(EMAIL, SENHA).andExpect(status().isOk());
     }
@@ -247,7 +239,7 @@ class AuthTest extends IntegrationTest {
         String token = ler(sessao, "$.accessToken");
         String refreshAntigo = ler(sessao, "$.refreshToken");
 
-        // sem pedir o código, não há código válido; 422 e não 401 (o cliente trataria 401 como sessão expirada)
+        // 422 e não 401: o cliente trataria 401 como sessão expirada
         trocarSenha(token, CODIGO, NOVA_SENHA)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("CODIGO_INVALIDO"));
@@ -267,7 +259,6 @@ class AuthTest extends IntegrationTest {
         renovar(ler(nova, "$.refreshToken")).andExpect(status().isOk());
         entrar(EMAIL, SENHA).andExpect(status().isUnauthorized());
         entrar(EMAIL, NOVA_SENHA).andExpect(status().isOk());
-        // o código não vale de novo
         trocarSenha(ler(nova, "$.accessToken"), CODIGO, "terceira-senha-3")
                 .andExpect(jsonPath("$.codigo").value("CODIGO_INVALIDO"));
     }

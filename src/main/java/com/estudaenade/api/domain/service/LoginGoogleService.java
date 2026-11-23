@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static com.estudaenade.api.domain.service.SessaoService.normalizarEmail;
 
-/** Login com a conta Google, inclusive em conta criada com e-mail e senha (vínculo automático pelo e-mail). */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -37,14 +36,9 @@ public class LoginGoogleService {
         return sessaoService.abrir(usuario);
     }
 
-    /**
-     * O Google comprova o dono do e-mail: a conta passa a ter o e-mail comprovado. A senha e as sessões existentes
-     * são mantidas, inclusive quando o e-mail ainda não estava comprovado (decisão de produto: quem se cadastrou
-     * com senha e depois entra com Google continua podendo usar a senha).
-     */
+    /** Conta criada com senha: vincula pelo e-mail e mantém a senha e as sessões. */
     private void vincular(Usuario usuario, DadosGoogle google) {
-        log.info("Conta {} vinculada ao Google{}", usuario.getId(),
-                usuario.isEmailVerificado() ? "" : " (e-mail comprovado agora)");
+        log.info("Conta {} vinculada ao Google", usuario.getId());
         usuario.setGoogleSub(google.sub());
         usuario.setEmailVerificado(true);
     }

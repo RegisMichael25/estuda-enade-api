@@ -46,15 +46,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
-		<!--
-			Validação do ID token do Google (Nimbus + NimbusJwtDecoder). Só a biblioteca: o starter
-			oauth2-resource-server não entra, porque configuraria um segundo filtro de JWT.
-		-->
+		<!-- ID token do Google. Sem o starter oauth2-resource-server, que criaria outro filtro de JWT. -->
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-oauth2-jose</artifactId>
 		</dependency>
-		<!-- Envio do código de redefinição de senha por e-mail (otp.provider=smtp) -->
+		<!-- Envio do código por e-mail (otp.provider=smtp) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>

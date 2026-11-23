@@ -20,10 +20,7 @@ import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Validação real do ID token (assinatura, iss, aud, exp, email_verified), com uma chave RSA local no lugar
- * das chaves públicas do Google.
- */
+/** Validação real do ID token, com uma chave RSA local no lugar das do Google. */
 class NimbusVerificadorTokenGoogleTest {
 
     private static final String CLIENT_ID = "app-web.apps.googleusercontent.com";

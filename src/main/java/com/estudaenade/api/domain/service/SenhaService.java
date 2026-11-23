@@ -16,18 +16,17 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Política de senha, gravação do hash e conferência no login (com bloqueio por tentativas). */
 @Slf4j
 @Service
 public class SenhaService {
 
     static final int MINIMO_CARACTERES = 8;
-    /** Limite do BCrypt: o que passar de 72 bytes seria ignorado em silêncio. */
+    /** Limite do BCrypt: o que passar disso é ignorado. */
     static final int MAXIMO_BYTES = 72;
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder encoder;
-    /** Conferido quando não há usuário ou senha, para o tempo de resposta não revelar se a conta existe. */
+    /** Para o tempo de resposta não revelar se a conta existe. */
     private final String hashFicticio;
 
     @Value("${auth.login.max-falhas:5}")
@@ -42,7 +41,6 @@ public class SenhaService {
         this.hashFicticio = encoder.encode("senha-ficticia-" + UUID.randomUUID());
     }
 
-    /** De 8 caracteres a 72 bytes (UTF-8), com pelo menos uma letra e um número. */
     public void validarForca(String senha) {
         boolean valida = senha != null
                 && senha.codePointCount(0, senha.length()) >= MINIMO_CARACTERES
@@ -55,7 +53,6 @@ public class SenhaService {
         }
     }
 
-    /** Valida a força e grava o hash. Também desfaz um bloqueio por tentativas. */
     public void definir(Usuario usuario, String senha) {
         validarForca(senha);
         usuario.setSenhaHash(encoder.encode(senha));
@@ -64,11 +61,7 @@ public class SenhaService {
         usuario.setBloqueadoAte(null);
     }
 
-    /**
-     * Login com senha. Devolve o id do usuário ou lança {@code CREDENCIAIS_INVALIDAS} — a mesma resposta para
-     * e-mail inexistente, conta sem senha e senha errada. Roda em transação própria e não faz rollback no erro:
-     * o contador de falhas precisa ser gravado mesmo quando a senha está errada.
-     */
+    /** Transação própria e sem rollback no erro: o contador de falhas precisa ser gravado. */
     @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = ApiException.class)
     public UUID autenticar(String email, String senha) {
         Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);

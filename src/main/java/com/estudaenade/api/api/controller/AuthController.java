@@ -20,10 +20,7 @@ import com.estudaenade.api.infra.security.UsuarioLogado;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Cadastro e login (com e-mail e senha ou com Google), "esqueci a senha" (código por e-mail), sessão e dados
- * da conta. Rotas em {@link AuthApi}.
- */
+/** Rotas em {@link AuthApi}. */
 @RestController
 @RequiredArgsConstructor
 public class AuthController implements AuthApi {

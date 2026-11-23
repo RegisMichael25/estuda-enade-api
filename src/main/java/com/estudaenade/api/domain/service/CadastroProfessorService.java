@@ -43,11 +43,7 @@ public class CadastroProfessorService {
 
     // ======================== cadastro ========================
 
-    /**
-     * Grava o professor já montado pelo cadastro (nome, e-mail, senha, Google). Entra aprovado só com convite válido;
-     * sem convite fica pendente até um professor aprovado liberar. O domínio do e-mail não aprova ninguém: alunos
-     * também têm e-mail institucional.
-     */
+    /** Só o convite aprova. O domínio do e-mail não, porque alunos também têm e-mail institucional. */
     public Usuario cadastrar(Usuario professor, String codigoConvite) {
         Instant agora = Instant.now();
         ConviteProfessor convite = null;

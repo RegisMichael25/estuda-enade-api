@@ -11,11 +11,7 @@ public final class AuthDtos {
     private AuthDtos() {
     }
 
-    /**
-     * @param aprovado        falso só para professor que ainda aguarda aprovação
-     * @param temSenha        falso quando a conta só entra com Google ou ainda precisa redefinir a senha
-     * @param googleVinculado se a conta está vinculada a uma conta Google
-     */
+    /** @param aprovado falso só para professor que ainda aguarda aprovação */
     public record UsuarioResponse(UUID id, String nome, String email, Papel papel, boolean aprovado,
                                   boolean temSenha, boolean googleVinculado) {
         public static UsuarioResponse de(Usuario u) {

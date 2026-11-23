@@ -7,7 +7,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
-/** Envia o código de redefinição de senha por e-mail via SMTP (configure MAIL_HOST, MAIL_PORT, MAIL_USERNAME e MAIL_PASSWORD). */
+/** Envia o código por e-mail via SMTP (configure MAIL_HOST, MAIL_PORT, MAIL_USERNAME e MAIL_PASSWORD). */
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "otp.provider", havingValue = "smtp")

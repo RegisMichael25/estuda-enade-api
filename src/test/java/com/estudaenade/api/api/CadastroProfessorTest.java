@@ -64,7 +64,7 @@ class CadastroProfessorTest extends IntegrationTest {
                 .andExpect(jsonPath("$.codigo").isNotEmpty());
         String convite = ler(criado, "$.codigo");
 
-        // aceita minúsculas e sem hífen; com senha e e-mail não comprovado, o convite basta
+        // aceita minúsculas e sem hífen
         ResultActions sessao = cadastrar(EMAIL_COMUM, "PROFESSOR", "Carla", convite.replace("-", "").toLowerCase())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.aprovado").value(true));
@@ -81,7 +81,7 @@ class CadastroProfessorTest extends IntegrationTest {
         cadastrar(outro, "PROFESSOR", "Diego", convite)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("CONVITE_INVALIDO"));
-        // a conta não foi criada: sem convite, o mesmo e-mail se cadastra (pendente)
+        // a conta não foi criada
         cadastrar(outro, "PROFESSOR", "Diego", null)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.aprovado").value(false));
@@ -109,32 +109,28 @@ class CadastroProfessorTest extends IntegrationTest {
                 .andExpect(jsonPath("$.codigo").value("CONVITE_INVALIDO"));
     }
 
-    /** Alunos também têm e-mail institucional: nem o domínio nem a comprovação do e-mail aprovam o professor. */
+    /** Alunos também têm e-mail institucional. */
     @Test
     void emailInstitucionalNaoAprovaPorNenhumCaminho() throws Exception {
         String pendente = ler(cadastrar(EMAIL_INSTITUCIONAL, "PROFESSOR", "Bia", null)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.aprovado").value(false)), "$.accessToken");
 
-        // trocar a senha logado (o código comprova o e-mail)
         post("/api/v1/eu/senha/codigo", pendente, null).andExpect(status().isNoContent());
         put("/api/v1/eu/senha", pendente, "{\"codigo\":\"%s\",\"novaSenha\":\"nova-senha-2\"}".formatted(CODIGO))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario.aprovado").value(false));
 
-        // redefinir a senha pelo "esqueci a senha"
         post("/api/v1/auth/senha/codigo", null, "{\"email\":\"%s\"}".formatted(EMAIL_INSTITUCIONAL))
                 .andExpect(status().isNoContent());
         post("/api/v1/auth/senha/redefinir", null, "{\"email\":\"%s\",\"codigo\":\"%s\",\"novaSenha\":\"nova-senha-3\"}"
                 .formatted(EMAIL_INSTITUCIONAL, CODIGO)).andExpect(status().isNoContent());
         entrar(EMAIL_INSTITUCIONAL, "nova-senha-3").andExpect(jsonPath("$.usuario.aprovado").value(false));
 
-        // entrar com Google (e-mail comprovado pelo Google)
         entrarComGoogle(token("sub-bia", EMAIL_INSTITUCIONAL, "Bia"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario.aprovado").value(false));
 
-        // cadastrar com Google
         cadastrarComGoogle(token("sub-rui", "rui@teste.dev", "Rui"), "PROFESSOR", "Rui", null)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.aprovado").value(false));

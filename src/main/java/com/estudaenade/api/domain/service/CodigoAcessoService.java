@@ -18,7 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 
-/** Códigos de uso único enviados por e-mail para redefinir a senha. Também comprovam o dono do e-mail. */
+/** Códigos de uso único enviados por e-mail para redefinir ou trocar a senha. */
 @Service
 @RequiredArgsConstructor
 public class CodigoAcessoService {
@@ -44,11 +44,7 @@ public class CodigoAcessoService {
     @Value("${otp.codigo-fixo:}")
     private String codigoFixo;
 
-    /**
-     * Gera um código novo (invalidando os pendentes) e o envia se {@code enviar} for verdadeiro.
-     * Para e-mail sem conta, o pedido é registrado sem envio: assim o limite de pedidos responde igual
-     * nos dois casos e não revela quais e-mails têm conta.
-     */
+    /** Com {@code enviar} falso (e-mail sem conta), só registra o pedido, para o limite não revelar a conta. */
     @Transactional
     public void solicitar(String email, boolean enviar) {
         Instant agora = Instant.now();
@@ -90,7 +86,6 @@ public class CodigoAcessoService {
         }
     }
 
-    /** Depois da senha redefinida, o código não pode ser reutilizado. */
     @Transactional
     public void consumir(String email) {
         repository.invalidarPendentes(email);

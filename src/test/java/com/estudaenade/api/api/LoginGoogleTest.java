@@ -10,10 +10,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Login e cadastro com Google (verificador falso: veja {@code GoogleFalsoConfiguration}). A validação real do
- * token fica em {@code NimbusVerificadorTokenGoogleTest}.
- */
 class LoginGoogleTest extends IntegrationTest {
 
     private static final String EMAIL = "ana@gmail.test";
@@ -46,7 +42,6 @@ class LoginGoogleTest extends IntegrationTest {
     void cadastroComGoogleUsaONomeEditadoEOEmailDoToken() throws Exception {
         String id = ler(cadastroAna("Ana Editada"), "$.usuario.id");
 
-        // o mesmo token (válido por cerca de 1 h) agora entra direto
         entrarComGoogle(TOKEN)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario.id").value(id));
@@ -77,7 +72,6 @@ class LoginGoogleTest extends IntegrationTest {
                 "{\"idToken\":\"%s\",\"nome\":\"Ana\",\"senha\":\"somenteletras\",\"papel\":\"ALUNO\"}".formatted(TOKEN))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("SENHA_FRACA"));
-        // nada foi criado
         entrarComGoogle(TOKEN).andExpect(status().isNotFound());
     }
 
@@ -97,7 +91,6 @@ class LoginGoogleTest extends IntegrationTest {
     @Test
     void contaComEmailComprovadoEntraPeloGoogleEMantemASenha() throws Exception {
         String refresh = ler(cadastrar(EMAIL, "ALUNO", "Ana", null), "$.refreshToken");
-        // e-mail comprovado antes (ex.: conta antiga, que entrava por código, ou senha redefinida)
         jdbc.update("update usuario set email_verificado = true");
 
         entrarComGoogle(TOKEN)
@@ -108,10 +101,6 @@ class LoginGoogleTest extends IntegrationTest {
         post("/api/v1/auth/renovar", null, "{\"refreshToken\":\"%s\"}".formatted(refresh)).andExpect(status().isOk());
     }
 
-    /**
-     * Conta criada com senha (e-mail ainda não comprovado): entra pelo Google, passa a ter o e-mail comprovado
-     * e mantém a senha e as sessões.
-     */
     @Test
     void contaCriadaComSenhaEntraPeloGoogleEMantemASenhaEAsSessoes() throws Exception {
         String refresh = ler(cadastrar(EMAIL, "ALUNO", "Ana", null), "$.refreshToken");

@@ -37,12 +37,10 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.TOO_MANY_REQUESTS, "MUITAS_SOLICITACOES", mensagem);
     }
 
-    /** Conflito com o estado atual (409), ex.: e-mail já usado por outra conta. */
     public static ApiException conflito(String codigo, String mensagem) {
         return new ApiException(HttpStatus.CONFLICT, codigo, mensagem);
     }
 
-    /** Recurso indisponível ou não configurado (503). */
     public static ApiException indisponivel(String codigo, String mensagem) {
         return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, codigo, mensagem);
     }

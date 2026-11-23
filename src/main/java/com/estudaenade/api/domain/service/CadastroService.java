@@ -15,10 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static com.estudaenade.api.domain.service.SessaoService.normalizarEmail;
 
-/**
- * Criação de conta, com e-mail e senha ou a partir da conta Google. As duas formas exigem senha.
- * Aluno entra sempre aprovado; professor segue as regras de {@link CadastroProfessorService#cadastrar}.
- */
 @Service
 @RequiredArgsConstructor
 public class CadastroService {
@@ -29,7 +25,6 @@ public class CadastroService {
     private final VerificadorTokenGoogle verificadorGoogle;
     private final SessaoService sessaoService;
 
-    /** O e-mail ainda não está comprovado (o cadastro não envia código). Professor sem convite fica pendente. */
     @Transactional
     public SessaoResponse cadastrar(CadastrarRequest req) {
         String email = normalizarEmail(req.getEmail());
@@ -45,7 +40,7 @@ public class CadastroService {
         return sessaoService.abrir(criar(novo, req.getCodigoConvite()));
     }
 
-    /** O e-mail vem do token (já comprovado pelo Google); o nome vem do corpo, editado pelo usuário. */
+    /** O e-mail vem do token; o nome vem do corpo (o usuário pode editar o do Google). */
     @Transactional
     public SessaoResponse cadastrarComGoogle(GoogleCadastrarRequest req) {
         DadosGoogle google = verificadorGoogle.verificar(req.getIdToken());
@@ -63,7 +58,7 @@ public class CadastroService {
         return sessaoService.abrir(criar(novo, req.getCodigoConvite()));
     }
 
-    /** Para aluno, o convite de professor é ignorado (como antes da separação dos fluxos). */
+    /** Para aluno, o convite é ignorado. */
     private Usuario criar(Usuario novo, String codigoConvite) {
         if (novo.getPapel() == Papel.PROFESSOR) {
             return cadastroProfessorService.cadastrar(novo, codigoConvite);

@@ -19,11 +19,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Confere o ID token com as chaves públicas do Google (JWKS, guardadas em cache pelo Nimbus): assinatura,
- * validade, emissor ({@code iss}) e destinatário ({@code aud}, que precisa ser um dos client IDs configurados).
- * Sem client ID configurado ({@code GOOGLE_CLIENT_IDS} vazio), o login com Google fica desligado.
- */
+/** Confere assinatura (JWKS do Google), validade, {@code iss} e {@code aud}. Sem client ID, fica desligado. */
 @Slf4j
 @Component
 public class NimbusVerificadorTokenGoogle implements VerificadorTokenGoogle {
@@ -38,7 +34,7 @@ public class NimbusVerificadorTokenGoogle implements VerificadorTokenGoogle {
         this(clientIds, NimbusJwtDecoder.withJwkSetUri(JWKS_GOOGLE).build());
     }
 
-    /** Usado nos testes, com um decoder de chave local no lugar do JWKS do Google. */
+    /** Para os testes, com chave local. */
     NimbusVerificadorTokenGoogle(List<String> clientIds, NimbusJwtDecoder decoder) {
         List<String> ids = clientIds == null ? List.of()
                 : clientIds.stream().map(String::trim).filter(s -> !s.isEmpty()).toList();
@@ -72,7 +68,7 @@ public class NimbusVerificadorTokenGoogle implements VerificadorTokenGoogle {
             log.debug("ID token do Google recusado: {}", e.getMessage());
             throw invalido();
         } catch (JwtException e) {
-            // Falha ao buscar as chaves do Google, por exemplo: nunca aceitar o token nesse caso.
+            // ex.: falha ao buscar as chaves; nunca aceitar o token nesse caso
             log.warn("Não foi possível validar o ID token do Google: {}", e.getMessage());
             throw ApiException.indisponivel("GOOGLE_DESABILITADO",
                     "Não foi possível confirmar a conta Google agora. Tente novamente em instantes.");

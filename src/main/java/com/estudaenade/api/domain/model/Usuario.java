@@ -44,28 +44,24 @@ public class Usuario {
     @ManyToOne(fetch = FetchType.LAZY)
     private Usuario aprovadoPor;
 
-    /** Hash da senha ({@code PasswordEncoder}). Nulo = a conta ainda não tem senha. */
+    /** Nulo: conta sem senha. */
     private String senhaHash;
 
     private Instant senhaAlteradaEm;
 
-    /** Identificador estável da conta Google vinculada (claim {@code sub}). */
+    /** Claim {@code sub} da conta Google vinculada. */
     private String googleSub;
 
-    /**
-     * Verdadeiro quando o dono do e-mail foi comprovado (login com Google ou código por e-mail).
-     * Hoje é só informativo: não aprova professor nem libera nada.
-     */
+    /** E-mail comprovado (Google ou código). Só informativo. */
     @Builder.Default
     @Column(nullable = false)
     private boolean emailVerificado = false;
 
-    /** Senhas erradas seguidas; zera no acerto. */
+    /** Senhas erradas seguidas. */
     @Builder.Default
     @Column(nullable = false)
     private int falhasLogin = 0;
 
-    /** Enquanto estiver no futuro, o login com senha é recusado. */
     private Instant bloqueadoAte;
 
     @Builder.Default

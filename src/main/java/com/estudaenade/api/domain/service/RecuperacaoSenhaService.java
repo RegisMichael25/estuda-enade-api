@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static com.estudaenade.api.domain.service.SessaoService.normalizarEmail;
 
-/** "Esqueci a senha": código por e-mail e definição da nova senha. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -22,23 +21,18 @@ public class RecuperacaoSenhaService {
     private final CodigoAcessoService codigoAcessoService;
     private final SenhaService senhaService;
 
-    /** Responde igual com e sem conta para o e-mail; só envia o código quando há conta. */
+    /** Só envia com conta, mas registra o pedido sempre (o limite responde igual nos dois casos). */
     public void solicitarCodigo(String email) {
         String normalizado = normalizarEmail(email);
         codigoAcessoService.solicitar(normalizado, usuarioRepository.existsByEmail(normalizado));
     }
 
-    /**
-     * Confere o código e grava a nova senha. O código comprova o e-mail ({@code emailVerificado}).
-     * Todas as sessões são encerradas; o usuário entra de novo com a nova senha.
-     */
     @Transactional
     public void redefinir(String email, String codigo, String novaSenha) {
         String normalizado = normalizarEmail(email);
-        senhaService.validarForca(novaSenha); // antes do código, para não gastar uma tentativa à toa
+        senhaService.validarForca(novaSenha); // antes, para não gastar tentativa do código
         codigoAcessoService.conferir(normalizado, codigo);
 
-        // Há códigos registrados para e-mails sem conta (veja CodigoAcessoService.solicitar).
         Usuario usuario = usuarioRepository.findByEmail(normalizado)
                 .orElseThrow(() -> ApiException.naoAutorizado("CODIGO_INVALIDO", "Código inválido ou expirado."));
 

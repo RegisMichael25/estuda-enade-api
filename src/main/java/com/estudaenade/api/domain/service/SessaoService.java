@@ -18,7 +18,6 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Locale;
 
-/** Emite a sessão (access token + refresh token) depois de um login ou cadastro concluído. */
 @Service
 @RequiredArgsConstructor
 public class SessaoService {
@@ -31,7 +30,6 @@ public class SessaoService {
     @Value("${jwt.refresh-expiration-days:30}")
     private long refreshDias;
 
-    /** O claim {@code aprovado} vai no access token: chame depois de qualquer mudança de aprovação do usuário. */
     @Transactional
     public SessaoResponse abrir(Usuario usuario) {
         byte[] bytes = new byte[32];
@@ -48,7 +46,6 @@ public class SessaoService {
         return new SessaoResponse(access, refresh, jwtService.validadeAccessSegundos(), UsuarioResponse.de(usuario));
     }
 
-    /** E-mail como é guardado: sem espaços nas pontas e em minúsculas. */
     public static String normalizarEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
     }

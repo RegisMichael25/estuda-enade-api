@@ -28,9 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({TestcontainersConfiguration.class, GoogleFalsoConfiguration.class})
 public abstract class IntegrationTest {
 
-    /** Código fixo de redefinição de senha, definido em application-test.properties. */
+    /** Código fixo de application-test.properties. */
     protected static final String CODIGO = "123456";
-    /** Senha usada nos cadastros dos testes (segue a política: letra e número, 8 ou mais caracteres). */
     protected static final String SENHA = "senha-teste-1";
     private static final AtomicInteger SEQUENCIA = new AtomicInteger(1);
 
@@ -80,10 +79,7 @@ public abstract class IntegrationTest {
 
     // ======================== FIXTURES ========================
 
-    /**
-     * Cadastra um usuário com e-mail e senha e devolve o access token. Professor já sai aprovado: a aprovação é
-     * gravada direto no banco (como a de outro professor) e o login é refeito, para o token levar o acesso.
-     */
+    /** Devolve o access token. Professor sai aprovado (direto no banco) e entra de novo, para o token levar o acesso. */
     protected String entrarComo(String papel, String nome) throws Exception {
         String email = "usuario" + SEQUENCIA.getAndIncrement() + "@teste.dev";
         String token = ler(cadastrar(email, papel, nome, null).andExpect(status().isCreated()), "$.accessToken");
@@ -94,14 +90,12 @@ public abstract class IntegrationTest {
         return ler(entrar(email, SENHA).andExpect(status().isOk()), "$.accessToken");
     }
 
-    /** Cadastro com e-mail e senha ({@link #SENHA}). {@code convite} nulo = sem convite. */
     protected ResultActions cadastrar(String email, String papel, String nome, String convite) throws Exception {
         return post("/api/v1/auth/cadastrar", null,
                 "{\"nome\":\"%s\",\"email\":\"%s\",\"senha\":\"%s\",\"papel\":\"%s\"%s}"
                         .formatted(nome, email, SENHA, papel, campoConvite(convite)));
     }
 
-    /** Cadastro a partir da conta Google, com a senha {@link #SENHA}. */
     protected ResultActions cadastrarComGoogle(String idToken, String papel, String nome, String convite) throws Exception {
         return post("/api/v1/auth/google/cadastrar", null,
                 "{\"idToken\":\"%s\",\"nome\":\"%s\",\"senha\":\"%s\",\"papel\":\"%s\"%s}"

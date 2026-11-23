@@ -6,12 +6,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
-/**
- * Substitui a validação real do Google nos testes de integração: nenhum teste chama o Google.
- * O "ID token" é um texto {@code google|sub|email|nome}; {@code google-nao-verificado|...} simula e-mail não
- * verificado. Qualquer outro texto é recusado como token inválido. A validação real (assinatura, iss, aud, exp)
- * é testada em {@code NimbusVerificadorTokenGoogleTest}.
- */
+/** Google falso: o "ID token" é {@code google|sub|email|nome}; qualquer outro texto é inválido. */
 @TestConfiguration(proxyBeanMethods = false)
 public class GoogleFalsoConfiguration {
 

@@ -12,11 +12,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
 
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
-    /**
-     * Encerra todas as sessões do usuário (troca ou redefinição de senha, vínculo com Google).
-     * Não limpa o contexto de persistência: o {@code Usuario} carregado na mesma transação continua
-     * gerenciado e as alterações seguintes nele são gravadas.
-     */
+    /** Sem clearAutomatically, para o Usuario da mesma transação continuar gerenciado. */
     @Modifying(flushAutomatically = true)
     @Query("update RefreshToken t set t.revogado = true where t.usuario.id = :usuarioId and t.revogado = false")
     void revogarTodosDoUsuario(UUID usuarioId);
