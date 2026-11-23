@@ -52,7 +52,7 @@ class ValidacaoDeRequisicaoTest extends IntegrationTest {
     void questaoPrecisaDeDuasACincoAlternativasComTexto() throws Exception {
         String prof = professor();
         String curso = criarCurso(prof, "ADS");
-        String tema = criarTema(prof, "Redes");
+        String tema = criarTema(prof, curso, "Redes");
         String modelo = "{\"enunciado\":\"E\",\"ano\":2021,\"cursoId\":\"%s\",\"temaId\":\"%s\",\"alternativas\":[%s]}";
 
         post("/api/v1/professor/questoes", prof, modelo.formatted(curso, tema, "{\"texto\":\"única\",\"correta\":true}"))

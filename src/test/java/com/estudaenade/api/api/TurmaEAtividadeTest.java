@@ -27,8 +27,8 @@ class TurmaEAtividadeTest extends IntegrationTest {
         turmaId = ler(turma, "$.id");
         codigoConvite = ler(turma, "$.codigoConvite");
         String curso = criarCurso(prof, "ADS");
-        q1 = questaoPublicada(prof, curso, criarTema(prof, "Banco de Dados"), 2);
-        q2 = questaoPublicada(prof, curso, criarTema(prof, "Redes"), 1);
+        q1 = questaoPublicada(prof, curso, criarTema(prof, curso, "Banco de Dados"), 2);
+        q2 = questaoPublicada(prof, curso, criarTema(prof, curso, "Redes"), 1);
     }
 
     /** Cria e publica um simulado com q1 e q2; devolve o id. */
