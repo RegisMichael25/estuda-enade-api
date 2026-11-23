@@ -1,6 +1,10 @@
 package com.estudaenade.api.api.controller;
 
 import com.estudaenade.api.api.contrato.ProfessorAtividadeApi;
+import com.estudaenade.api.api.contrato.dto.ComentarioRequest;
+import com.estudaenade.api.api.dto.ComentarioDtos.ComentarioResponse;
+import com.estudaenade.api.api.dto.ComentarioDtos.MuralResponse;
+import com.estudaenade.api.domain.service.ComentarioService;
 import com.estudaenade.api.api.contrato.dto.AtividadeRequest;
 import com.estudaenade.api.api.dto.AtividadeDtos.AtividadeDetalheResponse;
 import com.estudaenade.api.api.dto.AtividadeDtos.AtividadeResponse;
@@ -20,6 +24,7 @@ public class ProfessorAtividadeController implements ProfessorAtividadeApi {
 
     private final AtividadeService atividadeService;
     private final DesempenhoService desempenhoService;
+    private final ComentarioService comentarioService;
 
     @Override
     public AtividadeDetalheResponse detalharAtividade(UUID atividadeId) {
@@ -49,6 +54,28 @@ public class ProfessorAtividadeController implements ProfessorAtividadeApi {
     @Override
     public ResultadosAtividadeResponse resultadosDaAtividade(UUID atividadeId) {
         return desempenhoService.resultadosDaAtividade(professor(), atividadeId);
+    }
+
+    // ---------- mural de comentários ----------
+
+    @Override
+    public MuralResponse muralDaAtividade(UUID atividadeId) {
+        return comentarioService.mural(UsuarioLogado.atual(), atividadeId);
+    }
+
+    @Override
+    public ComentarioResponse comentarNaAtividade(UUID atividadeId, ComentarioRequest req) {
+        return comentarioService.comentar(UsuarioLogado.atual(), atividadeId, req.getTexto());
+    }
+
+    @Override
+    public ComentarioResponse editarComentario(UUID comentarioId, ComentarioRequest req) {
+        return comentarioService.editar(UsuarioLogado.atual(), comentarioId, req.getTexto());
+    }
+
+    @Override
+    public void apagarComentario(UUID comentarioId) {
+        comentarioService.apagar(UsuarioLogado.atual(), comentarioId);
     }
 
     private static UUID professor() {

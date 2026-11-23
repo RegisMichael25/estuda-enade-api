@@ -2276,6 +2276,259 @@
         }
       }
     },
+    "/api/v1/professor/atividades/{atividadeId}/comentarios": {
+      "get": {
+        "tags": [
+          "ProfessorAtividade"
+        ],
+        "operationId": "muralDaAtividade",
+        "summary": "Mural de comentários da atividade",
+        "description": "Só o professor da turma. Comentários em ordem de envio.",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MuralResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ProfessorAtividade"
+        ],
+        "operationId": "comentarNaAtividade",
+        "summary": "Publica um comentário no mural",
+        "description": "Turma arquivada não recebe comentários (`TURMA_ARQUIVADA`).",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComentarioRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComentarioResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/comentarios/{comentarioId}": {
+      "put": {
+        "tags": [
+          "ProfessorAtividade"
+        ],
+        "operationId": "editarComentario",
+        "summary": "Edita o próprio comentário",
+        "description": "Só o autor edita (`ACESSO_NEGADO`). Turma arquivada não aceita edição (`TURMA_ARQUIVADA`).",
+        "parameters": [
+          {
+            "name": "comentarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComentarioRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComentarioResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ProfessorAtividade"
+        ],
+        "operationId": "apagarComentario",
+        "summary": "Apaga um comentário",
+        "description": "O professor da turma apaga qualquer comentário do mural, inclusive com a turma arquivada.",
+        "parameters": [
+          {
+            "name": "comentarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
     "/api/v1/aluno/turmas/entrar": {
       "post": {
         "tags": [
@@ -2860,6 +3113,259 @@
           },
           "422": {
             "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/atividades/{atividadeId}/comentarios": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "muralDaAtividadeComoAluno",
+        "summary": "Mural de comentários da atividade",
+        "description": "Aberto à turma, mas só para o aluno que já enviou ao menos uma tentativa da atividade; antes disso, 404.",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MuralResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "comentarNaAtividadeComoAluno",
+        "summary": "Publica um comentário no mural",
+        "description": "Turma arquivada não recebe comentários (`TURMA_ARQUIVADA`).",
+        "parameters": [
+          {
+            "name": "atividadeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComentarioRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComentarioResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/comentarios/{comentarioId}": {
+      "put": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "editarComentarioComoAluno",
+        "summary": "Edita o próprio comentário",
+        "description": "Só o autor edita (`ACESSO_NEGADO`). Turma arquivada não aceita edição (`TURMA_ARQUIVADA`).",
+        "parameters": [
+          {
+            "name": "comentarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComentarioRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComentarioResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "apagarComentarioComoAluno",
+        "summary": "Apaga um comentário",
+        "description": "O aluno apaga só o que escreveu (`ACESSO_NEGADO`).",
+        "parameters": [
+          {
+            "name": "comentarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4839,6 +5345,87 @@
             "description": "As 6 publicadas mais recentes.",
             "items": {
               "$ref": "#/components/schemas/AtividadeRecentePainel"
+            }
+          }
+        }
+      },
+      "ComentarioRequest": {
+        "type": "object",
+        "required": [
+          "texto"
+        ],
+        "properties": {
+          "texto": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 2000
+          }
+        }
+      },
+      "ComentarioResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "texto",
+          "autor",
+          "papelAutor",
+          "criadoEm",
+          "editadoEm",
+          "meu",
+          "podeEditar",
+          "podeApagar"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "texto": {
+            "type": "string"
+          },
+          "autor": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "papelAutor": {
+            "$ref": "#/components/schemas/Papel"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "editadoEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "meu": {
+            "type": "boolean",
+            "description": "Escrito por quem fez a requisição."
+          },
+          "podeEditar": {
+            "type": "boolean"
+          },
+          "podeApagar": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MuralResponse": {
+        "type": "object",
+        "required": [
+          "podeComentar",
+          "comentarios"
+        ],
+        "properties": {
+          "podeComentar": {
+            "type": "boolean",
+            "description": "Falso com a turma arquivada (mural só para leitura) ou com a atividade em rascunho."
+          },
+          "comentarios": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComentarioResponse"
             }
           }
         }

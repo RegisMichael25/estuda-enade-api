@@ -141,6 +141,8 @@ Erros seguem `{ "codigo": "...", "mensagem": "..." }`.
 | GET, PUT, DELETE | `/atividades/{id}` | Detalhe com questões · edita ou exclui rascunho |
 | POST | `/atividades/{id}/publicar`, `/encerrar` | Publica para a turma · fecha para novas tentativas |
 | GET | `/atividades/{id}/resultados` | Resultado por aluno, por tema e média da turma |
+| GET, POST | `/atividades/{id}/comentarios` | Mural da atividade · comenta |
+| PUT, DELETE | `/comentarios/{id}` | Edita o próprio comentário · apaga (o próprio ou qualquer um da turma) |
 
 ### Aluno (`/aluno/...`)
 
@@ -156,6 +158,8 @@ Erros seguem `{ "codigo": "...", "mensagem": "..." }`.
 | PUT | `/tentativas/{id}/respostas/{questaoId}` | Marca a alternativa (`null` deixa em branco) |
 | POST | `/tentativas/{id}/enviar` | Envia e devolve o resultado |
 | GET | `/tentativas/{id}/resultado` | Nota, gabarito, explicações e acertos por tema |
+| GET, POST | `/atividades/{id}/comentarios` | Mural da atividade (depois de enviar a primeira tentativa) · comenta |
+| PUT, DELETE | `/comentarios/{id}` | Edita · apaga o próprio comentário |
 | GET | `/pratica/anos` | Anos com questões publicadas |
 | GET | `/pratica/questoes` | Questões para prática livre (`cursoId`, `temaId`, `ano`) |
 | POST | `/pratica/questoes/{id}/responder` | Responde e recebe gabarito e explicação |
@@ -173,6 +177,7 @@ O documento de visão deixou alguns pontos em aberto. Esta versão assume:
 - **Atividade publicada não muda.** Só rascunhos podem ser editados ou excluídos.
 - **Questão:** só o autor edita, publica e oculta. Sinalização marca para revisão e não tira a questão do banco; a lista de sinalizações mostra o motivo e a data, sem identificar quem sinalizou. Questão oculta sai do banco e da prática livre, mas continua nas atividades que já a usam.
 - **Turma arquivada:** some da lista padrão do professor e da lista do aluno, não aceita novos alunos, novo convite nem novas atividades (`422 TURMA_ARQUIVADA`). As atividades publicadas passam a encerradas (tentativas em andamento seguem até o envio ou o fim do tempo). Alunos, atividades e resultados continuam guardados. Reativar devolve a turma com o mesmo código; as atividades encerradas continuam encerradas.
+- **Mural de comentários:** cada atividade (lista ou simulado) tem um mural aberto à turma, em ordem de envio. O aluno só vê e comenta depois de enviar a primeira tentativa (antes disso, 404); o professor da turma vê sempre. O autor edita (fica marcado como editado) e apaga o que escreveu; o professor da turma apaga qualquer comentário. Turma arquivada deixa o mural só para leitura (`422 TURMA_ARQUIVADA` ao comentar ou editar; apagar continua permitido). Rascunho não recebe comentário (`422 ATIVIDADE_NAO_PUBLICADA`). Aluno que sai da turma perde o acesso, e os comentários dele ficam.
 - **Professor:** só atua depois de aprovado: por convite de outro professor, por e-mail de domínio institucional ou por aprovação de um professor já aprovado (veja "Cadastro de professor"). Qualquer professor aprovado pode aprovar e convidar; não há administrador nesta versão.
 
 ## Configuração
