@@ -46,7 +46,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
-		<!-- Envio do código de acesso por e-mail (otp.provider=smtp) -->
+		<!-- ID token do Google. Sem o starter oauth2-resource-server, que criaria outro filtro de JWT. -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-oauth2-jose</artifactId>
+		</dependency>
+		<!-- Envio do código por e-mail (otp.provider=smtp) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>

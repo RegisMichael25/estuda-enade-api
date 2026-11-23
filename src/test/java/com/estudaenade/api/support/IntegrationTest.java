@@ -25,11 +25,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, GoogleFalsoConfiguration.class})
 public abstract class IntegrationTest {
 
-    /** Código fixo definido em application-test.properties. */
+    /** Código fixo de application-test.properties. */
     protected static final String CODIGO = "123456";
+    protected static final String SENHA = "senha-teste-1";
     private static final AtomicInteger SEQUENCIA = new AtomicInteger(1);
 
     @Autowired protected MockMvc mvc;
@@ -78,27 +79,39 @@ public abstract class IntegrationTest {
 
     // ======================== FIXTURES ========================
 
-    /**
-     * Cadastra um usuário pelo fluxo de código por e-mail e devolve o access token.
-     * O e-mail é {@code @teste.dev}, domínio institucional nos testes: professor já entra aprovado.
-     */
+    /** Devolve o access token. Professor sai aprovado (direto no banco) e entra de novo, para o token levar o acesso. */
     protected String entrarComo(String papel, String nome) throws Exception {
         String email = "usuario" + SEQUENCIA.getAndIncrement() + "@teste.dev";
-        return ler(cadastrar(email, papel, nome, null).andExpect(status().isOk()), "$.accessToken");
+        String token = ler(cadastrar(email, papel, nome, null).andExpect(status().isCreated()), "$.accessToken");
+        if (!"PROFESSOR".equals(papel)) {
+            return token;
+        }
+        jdbc.update("update usuario set aprovado = true, aprovado_em = now() where email = ?", email);
+        return ler(entrar(email, SENHA).andExpect(status().isOk()), "$.accessToken");
     }
 
-    /** Pede o código e tenta o primeiro acesso com o e-mail dado. {@code convite} nulo = sem convite. */
     protected ResultActions cadastrar(String email, String papel, String nome, String convite) throws Exception {
-        post("/api/v1/auth/codigo", null, "{\"email\":\"%s\"}".formatted(email)).andExpect(status().isNoContent());
-        return entrar(email, papel, nome, convite);
+        return post("/api/v1/auth/cadastrar", null,
+                "{\"nome\":\"%s\",\"email\":\"%s\",\"senha\":\"%s\",\"papel\":\"%s\"%s}"
+                        .formatted(nome, email, SENHA, papel, campoConvite(convite)));
     }
 
-    /** Primeiro acesso reaproveitando um código já pedido (o código não é gasto quando o cadastro falha). */
-    protected ResultActions entrar(String email, String papel, String nome, String convite) throws Exception {
-        String campoConvite = convite == null ? "" : ",\"codigoConvite\":\"%s\"".formatted(convite);
-        return post("/api/v1/auth/entrar", null,
-                "{\"email\":\"%s\",\"codigo\":\"%s\",\"nome\":\"%s\",\"papel\":\"%s\"%s}"
-                        .formatted(email, CODIGO, nome, papel, campoConvite));
+    protected ResultActions cadastrarComGoogle(String idToken, String papel, String nome, String convite) throws Exception {
+        return post("/api/v1/auth/google/cadastrar", null,
+                "{\"idToken\":\"%s\",\"nome\":\"%s\",\"senha\":\"%s\",\"papel\":\"%s\"%s}"
+                        .formatted(idToken, nome, SENHA, papel, campoConvite(convite)));
+    }
+
+    protected ResultActions entrar(String email, String senha) throws Exception {
+        return post("/api/v1/auth/entrar", null, "{\"email\":\"%s\",\"senha\":\"%s\"}".formatted(email, senha));
+    }
+
+    protected ResultActions entrarComGoogle(String idToken) throws Exception {
+        return post("/api/v1/auth/google/entrar", null, "{\"idToken\":\"%s\"}".formatted(idToken));
+    }
+
+    private static String campoConvite(String convite) {
+        return convite == null ? "" : ",\"codigoConvite\":\"%s\"".formatted(convite);
     }
 
     protected String professor() throws Exception {

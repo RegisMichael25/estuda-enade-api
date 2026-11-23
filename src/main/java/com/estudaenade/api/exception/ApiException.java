@@ -36,4 +36,12 @@ public class ApiException extends RuntimeException {
     public static ApiException muitasSolicitacoes(String mensagem) {
         return new ApiException(HttpStatus.TOO_MANY_REQUESTS, "MUITAS_SOLICITACOES", mensagem);
     }
+
+    public static ApiException conflito(String codigo, String mensagem) {
+        return new ApiException(HttpStatus.CONFLICT, codigo, mensagem);
+    }
+
+    public static ApiException indisponivel(String codigo, String mensagem) {
+        return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, codigo, mensagem);
+    }
 }

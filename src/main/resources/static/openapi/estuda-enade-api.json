@@ -14,7 +14,7 @@
   "tags": [
     {
       "name": "Auth",
-      "description": "Login sem senha e dados da conta"
+      "description": "Login, cadastro, login com Google, senha e dados da conta"
     },
     {
       "name": "Catalogo",
@@ -47,30 +47,48 @@
     }
   ],
   "paths": {
-    "/api/v1/auth/codigo": {
+    "/api/v1/auth/cadastrar": {
       "post": {
         "tags": [
           "Auth"
         ],
-        "operationId": "solicitarCodigo",
-        "summary": "Envia o código de acesso para o e-mail",
+        "operationId": "cadastrar",
+        "summary": "Cria a conta com e-mail e senha e já abre a sessão",
+        "description": "Aluno entra sempre aprovado (`codigoConvite` é ignorado). Professor entra aprovado só com `codigoConvite` válido; sem convite fica pendente até outro professor aprovado liberar.",
         "security": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SolicitarCodigoRequest"
+                "$ref": "#/components/schemas/CadastrarRequest"
               }
             }
           }
         },
         "responses": {
-          "204": {
-            "description": "Sem conteúdo."
+          "201": {
+            "description": "Conta criada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResponse"
+                }
+              }
+            }
           },
-          "429": {
-            "description": "Muitos códigos solicitados para o mesmo e-mail.",
+          "409": {
+            "description": "`EMAIL_EM_USO`: já existe conta com este e-mail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`SENHA_FRACA` ou `CONVITE_INVALIDO`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -91,8 +109,7 @@
           "Auth"
         ],
         "operationId": "entrar",
-        "summary": "Entra com e-mail e código (cria a conta no primeiro acesso)",
-        "description": "No primeiro acesso de um e-mail responde `422 CADASTRO_NECESSARIO` sem gastar o código; reenvie com `nome` e `papel`. Professor entra aprovado com `codigoConvite` válido ou e-mail de domínio institucional; nos demais casos fica pendente.",
+        "summary": "Entra com e-mail e senha",
         "security": [],
         "requestBody": {
           "required": true,
@@ -116,7 +133,139 @@
             }
           },
           "401": {
-            "description": "Código inválido ou sessão expirada.",
+            "description": "`CREDENCIAIS_INVALIDAS`: e-mail ou senha incorretos (também para conta sem senha).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`MUITAS_TENTATIVAS`: conta bloqueada por alguns minutos depois de várias senhas erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google/entrar": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "entrarComGoogle",
+        "summary": "Entra com a conta Google",
+        "description": "Valida o ID token do Google. Se a conta com o mesmo e-mail existir e ainda não estiver vinculada, vincula e entra, mantendo a senha da conta; o e-mail dela passa a ser comprovado.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleEntrarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`GOOGLE_TOKEN_INVALIDO`: token inválido, expirado, de outro aplicativo ou com e-mail não verificado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`CONTA_NAO_ENCONTRADA`: não há conta para este Google; use `/auth/google/cadastrar` com o mesmo token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "`GOOGLE_DESABILITADO`: login com Google não configurado ou Google indisponível.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google/cadastrar": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "cadastrarComGoogle",
+        "summary": "Cria a conta a partir da conta Google",
+        "description": "O e-mail vem do token e já entra comprovado. O nome é o enviado no corpo (o cliente preenche com o do Google e o usuário pode alterar). A senha é obrigatória, para a conta também entrar com e-mail e senha.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleCadastrarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Conta criada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`GOOGLE_TOKEN_INVALIDO`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`EMAIL_EM_USO`: já existe conta com o e-mail do Google.",
             "content": {
               "application/json": {
                 "schema": {
@@ -126,7 +275,103 @@
             }
           },
           "422": {
-            "description": "`CADASTRO_NECESSARIO` ou `CONVITE_INVALIDO`.",
+            "description": "`SENHA_FRACA` ou `CONVITE_INVALIDO`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "`GOOGLE_DESABILITADO`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/senha/codigo": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "solicitarCodigoSenha",
+        "summary": "Envia por e-mail o código para redefinir a senha",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitarCodigoSenhaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo. Responde igual quando o e-mail não tem conta (nesse caso nada é enviado)."
+          },
+          "429": {
+            "description": "`MUITAS_SOLICITACOES`: muitos códigos pedidos para o mesmo e-mail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/senha/redefinir": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "redefinirSenha",
+        "summary": "Define uma nova senha com o código recebido",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedefinirSenhaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Senha alterada. Todas as sessões da conta são encerradas; entre de novo com a nova senha."
+          },
+          "401": {
+            "description": "`CODIGO_INVALIDO`: código inválido ou expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`SENHA_FRACA`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -260,6 +505,78 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UsuarioResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/eu/senha": {
+      "put": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "trocarSenha",
+        "summary": "Cria ou troca a senha da conta logada, com o código enviado por e-mail",
+        "description": "Peça o código antes em `POST /eu/senha/codigo`. Código errado responde 422 (não 401, que o cliente trataria como sessão expirada); após 5 erros o código é queimado e é preciso pedir outro.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrocarSenhaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Senha alterada. As outras sessões são encerradas; use a sessão devolvida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`CODIGO_INVALIDO` (código errado ou expirado) ou `SENHA_FRACA`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/eu/senha/codigo": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "solicitarCodigoTrocaSenha",
+        "summary": "Envia ao e-mail da conta logada o código para trocar a senha",
+        "responses": {
+          "204": {
+            "description": "Código enviado."
+          },
+          "429": {
+            "description": "`MUITAS_SOLICITACOES`: muitos códigos pedidos para o mesmo e-mail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
                 }
               }
             }
@@ -572,6 +889,71 @@
           },
           "403": {
             "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/professor/convites/{conviteId}/invalidar": {
+      "post": {
+        "tags": [
+          "ProfessorCadastro"
+        ],
+        "operationId": "invalidarConvite",
+        "summary": "Invalida manualmente um convite ativo criado por mim",
+        "parameters": [
+          {
+            "name": "conviteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConviteResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`CONVITE_NAO_DISPONIVEL`: o convite já foi utilizado, expirou ou foi invalidado.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3874,7 +4256,122 @@
         ],
         "description": "Como a tentativa terminou: envio do aluno ou fim do tempo."
       },
-      "SolicitarCodigoRequest": {
+      "CadastrarRequest": {
+        "type": "object",
+        "required": [
+          "nome",
+          "email",
+          "senha",
+          "papel"
+        ],
+        "properties": {
+          "nome": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 120
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 1
+          },
+          "senha": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "maxLength": 72,
+            "description": "De 8 a 72 caracteres (até 72 bytes em UTF-8), com pelo menos uma letra e um número."
+          },
+          "papel": {
+            "$ref": "#/components/schemas/Papel"
+          },
+          "codigoConvite": {
+            "type": "string",
+            "maxLength": 40,
+            "nullable": true,
+            "description": "Opcional, só para professor: convite recebido de outro professor. Ignorado para aluno."
+          }
+        }
+      },
+      "EntrarRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "senha"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 1
+          },
+          "senha": {
+            "type": "string",
+            "format": "password",
+            "minLength": 1,
+            "maxLength": 72
+          }
+        }
+      },
+      "GoogleEntrarRequest": {
+        "type": "object",
+        "required": [
+          "idToken"
+        ],
+        "properties": {
+          "idToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "description": "ID token (credential) devolvido pelo Google Identity Services."
+          }
+        }
+      },
+      "GoogleCadastrarRequest": {
+        "type": "object",
+        "description": "Não há campo de e-mail: ele vem sempre do token.",
+        "required": [
+          "idToken",
+          "nome",
+          "senha",
+          "papel"
+        ],
+        "properties": {
+          "idToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "description": "ID token (credential) devolvido pelo Google Identity Services."
+          },
+          "nome": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 120,
+            "description": "Nome da conta. O cliente preenche com o do Google e o usuário pode alterar."
+          },
+          "senha": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "maxLength": 72,
+            "description": "De 8 a 72 caracteres (até 72 bytes em UTF-8), com pelo menos uma letra e um número."
+          },
+          "papel": {
+            "$ref": "#/components/schemas/Papel"
+          },
+          "codigoConvite": {
+            "type": "string",
+            "maxLength": 40,
+            "nullable": true,
+            "description": "Opcional, só para professor: convite recebido de outro professor. Ignorado para aluno."
+          }
+        }
+      },
+      "SolicitarCodigoSenhaRequest": {
         "type": "object",
         "required": [
           "email"
@@ -3884,17 +4381,17 @@
             "type": "string",
             "format": "email",
             "maxLength": 254,
-            "description": "E-mail que vai receber o código de acesso.",
-            "minLength": 1
+            "minLength": 1,
+            "description": "E-mail da conta que vai receber o código."
           }
         }
       },
-      "EntrarRequest": {
+      "RedefinirSenhaRequest": {
         "type": "object",
-        "description": "Login pelo código de acesso. `nome` e `papel` só são necessários no primeiro acesso.",
         "required": [
           "email",
-          "codigo"
+          "codigo",
+          "novaSenha"
         ],
         "properties": {
           "email": {
@@ -3908,28 +4405,37 @@
             "minLength": 1,
             "pattern": "[\\s\\S]*\\S[\\s\\S]*",
             "maxLength": 20,
-            "description": "Código de acesso recebido."
+            "description": "Código recebido por e-mail."
           },
-          "nome": {
+          "novaSenha": {
             "type": "string",
-            "maxLength": 120,
-            "nullable": true,
-            "description": "Só no primeiro acesso (cadastro)."
-          },
-          "papel": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/Papel"
-              }
-            ],
-            "nullable": true,
-            "description": "Só no primeiro acesso (cadastro)."
-          },
-          "codigoConvite": {
+            "format": "password",
+            "minLength": 8,
+            "maxLength": 72,
+            "description": "De 8 a 72 caracteres (até 72 bytes em UTF-8), com pelo menos uma letra e um número."
+          }
+        }
+      },
+      "TrocarSenhaRequest": {
+        "type": "object",
+        "required": [
+          "codigo",
+          "novaSenha"
+        ],
+        "properties": {
+          "codigo": {
             "type": "string",
-            "maxLength": 40,
-            "nullable": true,
-            "description": "Opcional, só no cadastro de professor: convite recebido de outro professor."
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "maxLength": 20,
+            "description": "Código recebido por e-mail (`POST /eu/senha/codigo`)."
+          },
+          "novaSenha": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "maxLength": 72,
+            "description": "De 8 a 72 caracteres (até 72 bytes em UTF-8), com pelo menos uma letra e um número."
           }
         }
       },
@@ -4199,7 +4705,9 @@
           "nome",
           "email",
           "papel",
-          "aprovado"
+          "aprovado",
+          "temSenha",
+          "googleVinculado"
         ],
         "properties": {
           "id": {
@@ -4218,6 +4726,14 @@
           "aprovado": {
             "type": "boolean",
             "description": "Falso só para professor que ainda aguarda aprovação."
+          },
+          "temSenha": {
+            "type": "boolean",
+            "description": "Se a conta tem senha (falso: só entra com Google ou depois de redefinir)."
+          },
+          "googleVinculado": {
+            "type": "boolean",
+            "description": "Se a conta está vinculada a uma conta Google."
           }
         }
       },
@@ -4305,7 +4821,9 @@
           "expiraEm",
           "usado",
           "usadoPor",
-          "usadoEm"
+          "usadoEm",
+          "invalidado",
+          "invalidadoEm"
         ],
         "properties": {
           "id": {
@@ -4329,6 +4847,15 @@
             "description": "Nome de quem usou."
           },
           "usadoEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "invalidado": {
+            "type": "boolean",
+            "description": "Se o convite foi invalidado manualmente por quem o criou."
+          },
+          "invalidadoEm": {
             "type": "string",
             "format": "date-time",
             "nullable": true

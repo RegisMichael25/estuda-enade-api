@@ -12,9 +12,11 @@ public final class AuthDtos {
     }
 
     /** @param aprovado falso só para professor que ainda aguarda aprovação */
-    public record UsuarioResponse(UUID id, String nome, String email, Papel papel, boolean aprovado) {
+    public record UsuarioResponse(UUID id, String nome, String email, Papel papel, boolean aprovado,
+                                  boolean temSenha, boolean googleVinculado) {
         public static UsuarioResponse de(Usuario u) {
-            return new UsuarioResponse(u.getId(), u.getNome(), u.getEmail(), u.getPapel(), u.isAprovado());
+            return new UsuarioResponse(u.getId(), u.getNome(), u.getEmail(), u.getPapel(), u.isAprovado(),
+                    u.getSenhaHash() != null, u.getGoogleSub() != null);
         }
     }
 

@@ -23,12 +23,12 @@ public class SmtpEnviadorCodigo implements EnviadorCodigo {
         SimpleMailMessage mensagem = new SimpleMailMessage();
         mensagem.setFrom(remetente);
         mensagem.setTo(email);
-        mensagem.setSubject(codigo + " é o seu código do Estuda ENADE");
+        mensagem.setSubject(codigo + " é o seu código para redefinir a senha do Estuda ENADE");
         mensagem.setText("""
-                Seu código de acesso ao Estuda ENADE é %s.
+                Use o código %s para redefinir a senha da sua conta no Estuda ENADE.
 
                 Ele vale por %d minutos e só pode ser usado uma vez.
-                Se você não pediu este código, ignore este e-mail.
+                Se você não pediu para redefinir a senha, ignore este e-mail: sua senha continua a mesma.
                 """.formatted(codigo, validadeMinutos));
         mailSender.send(mensagem);
     }

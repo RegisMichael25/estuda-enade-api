@@ -44,6 +44,26 @@ public class Usuario {
     @ManyToOne(fetch = FetchType.LAZY)
     private Usuario aprovadoPor;
 
+    /** Nulo: conta sem senha. */
+    private String senhaHash;
+
+    private Instant senhaAlteradaEm;
+
+    /** Claim {@code sub} da conta Google vinculada. */
+    private String googleSub;
+
+    /** E-mail comprovado (Google ou código). Só informativo. */
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean emailVerificado = false;
+
+    /** Senhas erradas seguidas. */
+    @Builder.Default
+    @Column(nullable = false)
+    private int falhasLogin = 0;
+
+    private Instant bloqueadoAte;
+
     @Builder.Default
     @Column(nullable = false)
     private Instant criadoEm = Instant.now();
