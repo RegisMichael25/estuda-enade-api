@@ -158,4 +158,72 @@ class BancoDeQuestoesTest extends IntegrationTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("TEMA_DE_OUTRO_CURSO"));
     }
+
+    /** Rascunho com ano informado; publica se pedido. Devolve o id. */
+    private String questaoDoAno(String professor, String cursoId, String temaId, int ano, boolean publicar) throws Exception {
+        String id = ler(post("/api/v1/professor/questoes", professor, """
+                {"enunciado":"E","explicacao":"x","ano":%d,"cursoId":"%s","temaId":"%s",
+                 "alternativas":[{"texto":"a","correta":true},{"texto":"b","correta":false}]}
+                """.formatted(ano, cursoId, temaId)).andExpect(status().isCreated()), "$.id");
+        if (publicar) post("/api/v1/professor/questoes/" + id + "/publicar", professor, null).andExpect(status().isOk());
+        return id;
+    }
+
+    @Test
+    void anosDoFiltroSeguemCursoEVisibilidade() throws Exception {
+        String outroCurso = criarCurso(autor, "Engenharia");
+        String temaOutroCurso = criarTema(autor, outroCurso, "Cálculo");
+        questaoDoAno(autor, curso, tema, 2021, true);
+        questaoDoAno(autor, curso, tema, 2021, true);        // ano repetido aparece uma vez só
+        questaoDoAno(autor, curso, tema, 2019, false);       // rascunho do autor
+        questaoDoAno(outroProfessor, curso, tema, 2015, false); // rascunho de outro professor
+        questaoDoAno(autor, outroCurso, temaOutroCurso, 2024, true);
+
+        String ana = aluno("Ana");
+        get("/api/v1/aluno/pratica/anos?cursoId=" + curso, ana)
+                .andExpect(jsonPath("$", hasSize(1))).andExpect(jsonPath("$[0]").value(2021));
+        get("/api/v1/aluno/pratica/anos", ana)
+                .andExpect(jsonPath("$", hasSize(2))).andExpect(jsonPath("$[0]").value(2024));
+
+        // o professor vê os anos das publicadas e dos próprios rascunhos, nunca dos rascunhos alheios
+        get("/api/v1/professor/questoes/anos?cursoId=" + curso, autor)
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0]").value(2021))
+                .andExpect(jsonPath("$[1]").value(2019));
+        get("/api/v1/professor/questoes/anos?cursoId=" + curso, outroProfessor)
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[1]").value(2015));
+        get("/api/v1/professor/questoes/anos", autor).andExpect(jsonPath("$", hasSize(3)));
+    }
+
+    /** Questão publicada com o enunciado informado. */
+    private void publicadaComEnunciado(String enunciado) throws Exception {
+        String id = ler(post("/api/v1/professor/questoes", autor, """
+                {"enunciado":"%s","explicacao":"x","ano":2021,"cursoId":"%s","temaId":"%s",
+                 "alternativas":[{"texto":"a","correta":true},{"texto":"b","correta":false}]}
+                """.formatted(enunciado, curso, tema)).andExpect(status().isCreated()), "$.id");
+        post("/api/v1/professor/questoes/" + id + "/publicar", autor, null).andExpect(status().isOk());
+    }
+
+    @Test
+    void buscaNoEnunciadoIgnoraMaiusculasEAcentos() throws Exception {
+        publicadaComEnunciado("Qual é a complexidade da Busca Binária?");
+        publicadaComEnunciado("Quando aplicar a NORMALIZAÇÃO até a 3FN?");
+        publicadaComEnunciado("Taxa de 50% de acerto no campo nota_final");
+
+        String banco = "/api/v1/professor/questoes?cursoId=" + curso + "&busca=";
+        get(banco + "busca binaria", outroProfessor)
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.itens[0].enunciado").value("Qual é a complexidade da Busca Binária?"));
+        get(banco + "normalizacao", outroProfessor).andExpect(jsonPath("$.total").value(1));
+        get(banco + "COMPLEXIDADE", outroProfessor).andExpect(jsonPath("$.total").value(1));
+        // % e _ são texto, não curinga
+        get(banco + "50%", outroProfessor).andExpect(jsonPath("$.total").value(1));
+        get(banco + "a_f", outroProfessor).andExpect(jsonPath("$.total").value(1));
+        get(banco + "inexistente", outroProfessor).andExpect(jsonPath("$.total").value(0));
+        get(banco + "   ", outroProfessor).andExpect(jsonPath("$.total").value(3)); // em branco não filtra
+
+        get("/api/v1/aluno/pratica/questoes?cursoId=" + curso + "&busca=binária", aluno("Ana"))
+                .andExpect(jsonPath("$.total").value(1));
+    }
 }

@@ -133,7 +133,8 @@ Erros seguem `{ "codigo": "...", "mensagem": "..." }`.
 | GET | `/turmas/{id}/resumo` | Painel: alunos, banco, atividades abertas, média |
 | GET | `/turmas/{id}/alunos/{alunoId}/desempenho` | Desempenho do aluno nas atividades da turma |
 | GET, POST | `/turmas/{id}/atividades` | Lista · cria atividade (rascunho) |
-| GET, POST | `/questoes` | Banco (`minhas`, `cursoId`, `temaId`, `ano`, `status`, `sinalizadas`, `pagina`, `tamanho`) · cria rascunho |
+| GET | `/questoes/anos` | Anos das questões visíveis no banco (`cursoId` opcional), para o filtro |
+| GET, POST | `/questoes` | Banco (`minhas`, `cursoId`, `temaId`, `ano`, `busca`, `status`, `sinalizadas`, `pagina`, `tamanho`) · cria rascunho |
 | GET, PUT | `/questoes/{id}` | Detalhe · edita (só o autor) |
 | POST | `/questoes/{id}/publicar`, `/ocultar` | Publica no banco compartilhado · oculta |
 | GET, POST | `/questoes/{id}/sinalizacoes` | Lista · sinaliza possível erro |
@@ -160,8 +161,8 @@ Erros seguem `{ "codigo": "...", "mensagem": "..." }`.
 | GET | `/tentativas/{id}/resultado` | Nota, gabarito, explicações e acertos por tema |
 | GET, POST | `/atividades/{id}/comentarios` | Mural da atividade (depois de enviar a primeira tentativa) · comenta |
 | PUT, DELETE | `/comentarios/{id}` | Edita · apaga o próprio comentário |
-| GET | `/pratica/anos` | Anos com questões publicadas |
-| GET | `/pratica/questoes` | Questões para prática livre (`cursoId`, `temaId`, `ano`) |
+| GET | `/pratica/anos` | Anos com questões publicadas (`cursoId` opcional) |
+| GET | `/pratica/questoes` | Questões para prática livre (`cursoId`, `temaId`, `ano`, `busca`) |
 | POST | `/pratica/questoes/{id}/responder` | Responde e recebe gabarito e explicação |
 | POST | `/questoes/{id}/sinalizacoes` | Sinaliza possível erro |
 | GET | `/desempenho` | Acertos gerais e por tema |

@@ -108,15 +108,15 @@ public class AlunoController implements AlunoApi {
     // ---------- prática livre ----------
 
     @Override
-    public List<Integer> anosDaPratica() {
-        return questaoService.anosDisponiveis();
+    public List<Integer> anosDaPratica(UUID cursoId) {
+        return questaoService.anosDisponiveis(cursoId);
     }
 
     /** Questões publicadas, sem gabarito e sem as reservadas para atividades ainda não concluídas. */
     @Override
-    public Pagina<QuestaoAlunoResponse> questoesDaPratica(UUID cursoId, UUID temaId, Integer ano,
+    public Pagina<QuestaoAlunoResponse> questoesDaPratica(UUID cursoId, UUID temaId, Integer ano, String busca,
                                                           Integer pagina, Integer tamanho) {
-        return questaoService.listarParaPratica(aluno(), cursoId, temaId, ano, pagina, tamanho);
+        return questaoService.listarParaPratica(aluno(), cursoId, temaId, ano, busca, pagina, tamanho);
     }
 
     /** Responde e recebe gabarito e explicação na hora. */

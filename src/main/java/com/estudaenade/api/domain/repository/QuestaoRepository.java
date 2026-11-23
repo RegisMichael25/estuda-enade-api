@@ -1,5 +1,6 @@
 package com.estudaenade.api.domain.repository;
 
+import com.estudaenade.api.domain.enums.StatusQuestao;
 import com.estudaenade.api.domain.model.Questao;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -27,4 +28,28 @@ public interface QuestaoRepository extends JpaRepository<Questao, UUID>, JpaSpec
                               where t.atividade_id = a.id and t.aluno_id = :alunoId and t.finalizada_em is not null)
             """, nativeQuery = true)
     List<UUID> reservadasParaAtividade(UUID alunoId);
+
+    // Anos para os filtros, do mais recente ao mais antigo. Uma consulta com e outra sem curso,
+    // para não depender de parâmetro nulo na query.
+
+    @Query("select distinct q.ano from Questao q where q.status = :status order by q.ano desc")
+    List<Integer> anosComStatus(StatusQuestao status);
+
+    @Query("select distinct q.ano from Questao q where q.status = :status and q.curso.id = :cursoId order by q.ano desc")
+    List<Integer> anosComStatusNoCurso(StatusQuestao status, UUID cursoId);
+
+    /** Mesma visibilidade do banco do professor: publicadas de todos e as dele em qualquer estado. */
+    @Query("""
+            select distinct q.ano from Questao q
+            where (q.status = :publicada or q.autor.id = :professorId)
+            order by q.ano desc
+            """)
+    List<Integer> anosVisiveisAoProfessor(StatusQuestao publicada, UUID professorId);
+
+    @Query("""
+            select distinct q.ano from Questao q
+            where (q.status = :publicada or q.autor.id = :professorId) and q.curso.id = :cursoId
+            order by q.ano desc
+            """)
+    List<Integer> anosVisiveisAoProfessorNoCurso(StatusQuestao publicada, UUID professorId, UUID cursoId);
 }
