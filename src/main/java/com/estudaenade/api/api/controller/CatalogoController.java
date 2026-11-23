@@ -2,15 +2,18 @@ package com.estudaenade.api.api.controller;
 
 import com.estudaenade.api.api.contrato.CatalogoApi;
 import com.estudaenade.api.api.contrato.dto.NomeRequest;
+import com.estudaenade.api.api.contrato.dto.TemaRequest;
 import com.estudaenade.api.api.dto.ItemResponse;
 import com.estudaenade.api.domain.model.Curso;
 import com.estudaenade.api.domain.model.Tema;
 import com.estudaenade.api.domain.repository.CursoRepository;
 import com.estudaenade.api.domain.repository.TemaRepository;
+import com.estudaenade.api.exception.ApiException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 /** Cursos e temas usados nos filtros do banco e na leitura de desempenho. Rotas em {@link CatalogoApi}. */
 @RestController
@@ -25,9 +28,13 @@ public class CatalogoController implements CatalogoApi {
         return cursoRepository.findAllByOrderByNomeAsc().stream().map(ItemResponse::de).toList();
     }
 
+    /** Sem {@code cursoId}, todos os temas; com ele, só os temas desse curso. */
     @Override
-    public List<ItemResponse> temas() {
-        return temaRepository.findAllByOrderByNomeAsc().stream().map(ItemResponse::de).toList();
+    public List<ItemResponse> temas(UUID cursoId) {
+        List<Tema> temas = cursoId == null
+                ? temaRepository.findAllByOrderByNomeAsc()
+                : temaRepository.findAllByCursoIdOrderByNomeAsc(cursoId);
+        return temas.stream().map(ItemResponse::de).toList();
     }
 
     /** Cria o curso ou devolve o existente com o mesmo nome. */
@@ -38,11 +45,13 @@ public class CatalogoController implements CatalogoApi {
                 .orElseGet(() -> cursoRepository.save(Curso.builder().nome(nome).build())));
     }
 
-    /** Cria o tema ou devolve o existente com o mesmo nome. */
+    /** Cria o tema no curso ou devolve o existente com o mesmo nome nesse curso. */
     @Override
-    public ItemResponse criarTema(NomeRequest req) {
+    public ItemResponse criarTema(TemaRequest req) {
         String nome = req.getNome().trim();
-        return ItemResponse.de(temaRepository.findByNomeIgnoreCase(nome)
-                .orElseGet(() -> temaRepository.save(Tema.builder().nome(nome).build())));
+        Curso curso = cursoRepository.findById(req.getCursoId())
+                .orElseThrow(() -> ApiException.naoEncontrado("Curso não encontrado."));
+        return ItemResponse.de(temaRepository.findByCursoIdAndNomeIgnoreCase(curso.getId(), nome)
+                .orElseGet(() -> temaRepository.save(Tema.builder().nome(nome).curso(curso).build())));
     }
 }

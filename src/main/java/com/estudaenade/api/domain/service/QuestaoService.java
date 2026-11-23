@@ -208,6 +208,9 @@ public class QuestaoService {
                 .orElseThrow(() -> ApiException.naoEncontrado("Curso não encontrado.")));
         questao.setTema(temaRepository.findById(req.getTemaId())
                 .orElseThrow(() -> ApiException.naoEncontrado("Tema não encontrado.")));
+        if (!questao.getTema().getCurso().getId().equals(questao.getCurso().getId())) {
+            throw ApiException.regra("TEMA_DE_OUTRO_CURSO", "O tema escolhido não pertence ao curso da questão.");
+        }
 
         // Atualiza as alternativas na mesma posição para manter os ids já usados em respostas
         List<Alternativa> atuais = questao.getAlternativas();

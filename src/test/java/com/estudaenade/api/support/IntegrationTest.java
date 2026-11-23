@@ -113,8 +113,9 @@ public abstract class IntegrationTest {
         return ler(post("/api/v1/professor/cursos", professor, "{\"nome\":\"%s\"}".formatted(nome)).andExpect(status().isOk()), "$.id");
     }
 
-    protected String criarTema(String professor, String nome) throws Exception {
-        return ler(post("/api/v1/professor/temas", professor, "{\"nome\":\"%s\"}".formatted(nome)).andExpect(status().isOk()), "$.id");
+    protected String criarTema(String professor, String cursoId, String nome) throws Exception {
+        return ler(post("/api/v1/professor/temas", professor, "{\"nome\":\"%s\",\"cursoId\":\"%s\"}".formatted(nome, cursoId))
+                .andExpect(status().isOk()), "$.id");
     }
 
     /** Cria a turma e devolve a resposta (use {@code ler(r, "$.id")} e {@code "$.codigoConvite"}). */

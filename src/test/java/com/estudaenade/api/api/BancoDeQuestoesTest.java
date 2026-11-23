@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -21,7 +23,7 @@ class BancoDeQuestoesTest extends IntegrationTest {
         autor = professor();
         outroProfessor = entrarComo("PROFESSOR", "Prof. Lima");
         curso = criarCurso(autor, "ADS");
-        tema = criarTema(autor, "Banco de Dados");
+        tema = criarTema(autor, curso, "Banco de Dados");
     }
 
     @Test
@@ -123,5 +125,37 @@ class BancoDeQuestoesTest extends IntegrationTest {
         post("/api/v1/professor/questoes/" + id + "/ocultar", autor, null).andExpect(status().isOk());
         get("/api/v1/aluno/pratica/questoes", aluno("Ana")).andExpect(jsonPath("$.total").value(0));
         get("/api/v1/professor/questoes", outroProfessor).andExpect(jsonPath("$.total").value(0));
+    }
+
+    @Test
+    void temaPertenceAoCursoEMesmoNomePodeExistirEmOutroCurso() throws Exception {
+        String outroCurso = criarCurso(autor, "Engenharia");
+        String temaOutroCurso = criarTema(autor, outroCurso, "Banco de Dados");
+
+        assertNotEquals(tema, temaOutroCurso);
+        assertEquals(tema, criarTema(autor, curso, "banco de dados"));
+
+        get("/api/v1/temas?cursoId=" + curso, autor)
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(tema));
+        get("/api/v1/temas", autor).andExpect(jsonPath("$", hasSize(2)));
+    }
+
+    @Test
+    void naoCriaTemaEmCursoInexistente() throws Exception {
+        post("/api/v1/professor/temas", autor,
+                "{\"nome\":\"Redes\",\"cursoId\":\"00000000-0000-0000-0000-00000000ffff\"}")
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void questaoNaoAceitaTemaDeOutroCurso() throws Exception {
+        String outroCurso = criarCurso(autor, "Engenharia");
+        post("/api/v1/professor/questoes", autor, """
+                {"enunciado":"E","ano":2021,"cursoId":"%s","temaId":"%s",
+                 "alternativas":[{"texto":"a","correta":true},{"texto":"b","correta":false}]}
+                """.formatted(outroCurso, tema))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("TEMA_DE_OUTRO_CURSO"));
     }
 }

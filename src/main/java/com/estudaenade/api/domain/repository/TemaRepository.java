@@ -11,5 +11,7 @@ public interface TemaRepository extends JpaRepository<Tema, UUID> {
 
     List<Tema> findAllByOrderByNomeAsc();
 
-    Optional<Tema> findByNomeIgnoreCase(String nome);
+    List<Tema> findAllByCursoIdOrderByNomeAsc(UUID cursoId);
+
+    Optional<Tema> findByCursoIdAndNomeIgnoreCase(UUID cursoId, String nome);
 }

@@ -20,4 +20,8 @@ public class Tema {
 
     @Column(nullable = false)
     private String nome;
+
+    /** Todo tema pertence a um curso; o mesmo nome pode existir em cursos diferentes. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    private Curso curso;
 }

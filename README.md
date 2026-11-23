@@ -114,13 +114,13 @@ Erros seguem `{ "codigo": "...", "mensagem": "..." }`.
 | POST | `/auth/renovar` | Troca o refresh token por uma nova sessão |
 | POST | `/auth/sair` | Revoga o refresh token |
 | GET, PUT | `/eu` | Dados da conta · alterar nome |
-| GET | `/cursos`, `/temas` | Catálogo usado nos filtros |
+| GET | `/cursos`, `/temas` | Catálogo usado nos filtros (`/temas?cursoId=` traz só os temas do curso) |
 
 ### Professor (`/professor/...`)
 
 | Método | Rota | O que faz |
 |---|---|---|
-| POST | `/cursos`, `/temas` | Cria curso ou tema |
+| POST | `/cursos`, `/temas` | Cria curso ou tema (o tema pertence a um curso: `{ nome, cursoId }`) |
 | GET | `/professores/pendentes` | Professores aguardando aprovação |
 | POST | `/professores/{id}/aprovar` | Aprova o cadastro de um professor pendente |
 | GET, POST | `/convites` | Meus convites de professor · gera um convite (o código só aparece na criação) |
