@@ -31,6 +31,9 @@ public abstract class IntegrationTest {
     /** Código fixo de application-test.properties. */
     protected static final String CODIGO = "123456";
     protected static final String SENHA = "senha-teste-1";
+    /** Unidades de tempo fixas da V00009 (o TRUNCATE dos testes não as apaga). */
+    protected static final String MINUTOS_ID = "00000000-0000-0000-0007-000000000001";
+    protected static final String HORAS_ID = "00000000-0000-0000-0007-000000000002";
     private static final AtomicInteger SEQUENCIA = new AtomicInteger(1);
 
     @Autowired protected MockMvc mvc;

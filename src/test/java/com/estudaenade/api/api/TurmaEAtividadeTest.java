@@ -36,11 +36,12 @@ class TurmaEAtividadeTest extends IntegrationTest {
         return atividadePublicada("SIMULADO", duracao, maxTentativas);
     }
 
-    /** Cria e publica uma atividade do tipo informado com q1 e q2; devolve o id. */
+    /** Cria e publica uma atividade do tipo informado com q1 e q2; a duração é em minutos. Devolve o id. */
     private String atividadePublicada(String tipo, String duracao, String maxTentativas) throws Exception {
+        String unidade = "null".equals(duracao) ? "null" : "\"" + MINUTOS_ID + "\"";
         String id = ler(post("/api/v1/professor/turmas/" + turmaId + "/atividades", prof, """
-                {"titulo":"Atividade 1","tipo":"%s","duracaoMinutos":%s,"maxTentativas":%s,"questaoIds":["%s","%s"]}
-                """.formatted(tipo, duracao, maxTentativas, q1, q2)).andExpect(status().isCreated()), "$.id");
+                {"titulo":"Atividade 1","tipo":"%s","duracao":%s,"unidadeTempoId":%s,"maxTentativas":%s,"questaoIds":["%s","%s"]}
+                """.formatted(tipo, duracao, unidade, maxTentativas, q1, q2)).andExpect(status().isCreated()), "$.id");
         post("/api/v1/professor/atividades/" + id + "/publicar", prof, null).andExpect(status().isOk());
         return id;
     }

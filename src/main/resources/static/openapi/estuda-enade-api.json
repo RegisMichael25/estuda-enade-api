@@ -18,7 +18,7 @@
     },
     {
       "name": "Catalogo",
-      "description": "Cursos e temas usados nos filtros"
+      "description": "Cursos, temas e unidades de tempo"
     },
     {
       "name": "ProfessorCadastro",
@@ -651,6 +651,34 @@
             }
           }
         ]
+      }
+    },
+    "/api/v1/unidades-tempo": {
+      "get": {
+        "tags": [
+          "Catalogo"
+        ],
+        "operationId": "unidadesTempo",
+        "summary": "Unidades de tempo da duração de uma atividade",
+        "description": "Linhas fixas: Minutos (`min`) e Horas (`h`), nesta ordem.",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UnidadeTempoResponse"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
       }
     },
     "/api/v1/professor/cursos": {
@@ -1695,7 +1723,7 @@
             "$ref": "#/components/responses/Erro"
           }
         },
-        "description": "Turma arquivada responde `422 TURMA_ARQUIVADA`."
+        "description": "Turma arquivada responde `422 TURMA_ARQUIVADA`. Duração: `422 UNIDADE_TEMPO_OBRIGATORIA`, `422 UNIDADE_TEMPO_INVALIDA` ou `422 DURACAO_INVALIDA`."
       }
     },
     "/api/v1/professor/questoes": {
@@ -2530,7 +2558,8 @@
           "default": {
             "$ref": "#/components/responses/Erro"
           }
-        }
+        },
+        "description": "Duração: `422 UNIDADE_TEMPO_OBRIGATORIA`, `422 UNIDADE_TEMPO_INVALIDA` ou `422 DURACAO_INVALIDA`."
       },
       "delete": {
         "tags": [
@@ -4630,13 +4659,19 @@
           "tipo": {
             "$ref": "#/components/schemas/TipoAtividade"
           },
-          "duracaoMinutos": {
+          "duracao": {
             "type": "integer",
             "format": "int32",
             "minimum": 1,
             "maximum": 600,
             "nullable": true,
-            "description": "Nulo = sem tempo."
+            "description": "Valor inteiro na unidade de `unidadeTempoId`. Nulo = sem tempo. Convertida, não pode passar de 600 minutos (10 horas): `422 DURACAO_INVALIDA`."
+          },
+          "unidadeTempoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Unidade da `duracao` (veja `GET /unidades-tempo`). Obrigatória quando há `duracao` (`422 UNIDADE_TEMPO_OBRIGATORIA`); ignorada sem ela. Id inexistente: `422 UNIDADE_TEMPO_INVALIDA`."
           },
           "maxTentativas": {
             "type": "integer",
@@ -4695,6 +4730,33 @@
           },
           "nome": {
             "type": "string"
+          }
+        }
+      },
+      "UnidadeTempoResponse": {
+        "type": "object",
+        "description": "Unidade da duração de uma atividade (minutos ou horas).",
+        "required": [
+          "id",
+          "nome",
+          "codigo",
+          "descricao"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "codigo": {
+            "type": "string",
+            "description": "Fixo e único: `min` (minutos) ou `h` (horas)."
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -5280,6 +5342,8 @@
           "titulo",
           "tipo",
           "duracaoMinutos",
+          "duracao",
+          "unidadeTempo",
           "maxTentativas",
           "status",
           "totalQuestoes",
@@ -5304,6 +5368,21 @@
           "duracaoMinutos": {
             "type": "integer",
             "format": "int32",
+            "nullable": true,
+            "description": "Duração convertida para minutos. Nulo = sem tempo."
+          },
+          "duracao": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "description": "Valor digitado pelo professor, na unidade de `unidadeTempo`."
+          },
+          "unidadeTempo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnidadeTempoResponse"
+              }
+            ],
             "nullable": true
           },
           "maxTentativas": {
@@ -5356,6 +5435,8 @@
           "turma",
           "totalQuestoes",
           "duracaoMinutos",
+          "duracao",
+          "unidadeTempo",
           "maxTentativas",
           "status",
           "tentativasFeitas",
@@ -5384,6 +5465,21 @@
           "duracaoMinutos": {
             "type": "integer",
             "format": "int32",
+            "nullable": true,
+            "description": "Duração convertida para minutos. Nulo = sem tempo."
+          },
+          "duracao": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "description": "Valor digitado pelo professor, na unidade de `unidadeTempo`."
+          },
+          "unidadeTempo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnidadeTempoResponse"
+              }
+            ],
             "nullable": true
           },
           "maxTentativas": {
@@ -5690,6 +5786,8 @@
           "status",
           "totalQuestoes",
           "duracaoMinutos",
+          "duracao",
+          "unidadeTempo",
           "concluiram"
         ],
         "properties": {
@@ -5713,6 +5811,21 @@
           "duracaoMinutos": {
             "type": "integer",
             "format": "int32",
+            "nullable": true,
+            "description": "Duração convertida para minutos. Nulo = sem tempo."
+          },
+          "duracao": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "description": "Valor digitado pelo professor, na unidade de `unidadeTempo`."
+          },
+          "unidadeTempo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnidadeTempoResponse"
+              }
+            ],
             "nullable": true
           },
           "concluiram": {
@@ -5932,6 +6045,8 @@
           "status",
           "totalQuestoes",
           "duracaoMinutos",
+          "duracao",
+          "unidadeTempo",
           "concluiram",
           "turma",
           "totalAlunos"
@@ -5957,6 +6072,21 @@
           "duracaoMinutos": {
             "type": "integer",
             "format": "int32",
+            "nullable": true,
+            "description": "Duração convertida para minutos. Nulo = sem tempo."
+          },
+          "duracao": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "description": "Valor digitado pelo professor, na unidade de `unidadeTempo`."
+          },
+          "unidadeTempo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnidadeTempoResponse"
+              }
+            ],
             "nullable": true
           },
           "concluiram": {

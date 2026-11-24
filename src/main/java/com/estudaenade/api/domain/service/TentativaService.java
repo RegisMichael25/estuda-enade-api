@@ -4,6 +4,7 @@ import com.estudaenade.api.api.dto.AtividadeDtos.*;
 import com.estudaenade.api.api.dto.ItemResponse;
 import com.estudaenade.api.api.dto.QuestaoDtos.AlternativaResponse;
 import com.estudaenade.api.api.dto.QuestaoDtos.QuestaoAlunoResponse;
+import com.estudaenade.api.api.dto.UnidadeTempoResponse;
 import com.estudaenade.api.domain.enums.Encerramento;
 import com.estudaenade.api.domain.enums.StatusAtividade;
 import com.estudaenade.api.domain.model.*;
@@ -93,8 +94,8 @@ public class TentativaService {
                 .aluno(usuarioRepository.getReferenceById(alunoId))
                 .numero((int) feitas + 1)
                 .iniciadaEm(agora)
-                .expiraEm(atividade.getDuracaoMinutos() == null ? null
-                        : agora.plus(Duration.ofMinutes(atividade.getDuracaoMinutos())))
+                .expiraEm(atividade.getDuracao() == null ? null
+                        : agora.plus(Duration.ofMinutes(atividade.duracaoEmMinutos())))
                 .total(atividade.getQuestoes().size())
                 .build());
         return estado(tentativa);
@@ -239,7 +240,8 @@ public class TentativaService {
                 && (a.getMaxTentativas() == null || tentativas.size() < a.getMaxTentativas()));
         return new AtividadeAlunoResponse(a.getId(), a.getTitulo(), a.getTipo(),
                 new ItemResponse(a.getTurma().getId(), a.getTurma().getNome()),
-                a.getQuestoes().size(), a.getDuracaoMinutos(), a.getMaxTentativas(), a.getStatus(),
+                a.getQuestoes().size(), a.duracaoEmMinutos(), a.getDuracao(),
+                UnidadeTempoResponse.de(a.getUnidadeTempo()), a.getMaxTentativas(), a.getStatus(),
                 tentativas.size(), abertaId, melhor, podeIniciar);
     }
 

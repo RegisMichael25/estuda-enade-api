@@ -11,8 +11,10 @@ import com.estudaenade.api.domain.model.Atividade;
 import com.estudaenade.api.domain.model.AtividadeQuestao;
 import com.estudaenade.api.domain.model.Questao;
 import com.estudaenade.api.domain.model.Turma;
+import com.estudaenade.api.domain.model.UnidadeTempo;
 import com.estudaenade.api.domain.repository.AtividadeRepository;
 import com.estudaenade.api.domain.repository.QuestaoRepository;
+import com.estudaenade.api.domain.repository.UnidadeTempoRepository;
 import com.estudaenade.api.exception.ApiException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ public class AtividadeService {
 
     private final AtividadeRepository atividadeRepository;
     private final QuestaoRepository questaoRepository;
+    private final UnidadeTempoRepository unidadeTempoRepository;
     private final TurmaService turmaService;
 
     public AtividadeResponse criar(UUID professorId, UUID turmaId, AtividadeRequest req) {
@@ -128,6 +131,37 @@ public class AtividadeService {
         }
     }
 
+    /** Duração máxima de uma atividade, já convertida para minutos (10 horas). */
+    static final int DURACAO_MAXIMA_MINUTOS = 600;
+
+    /**
+     * Sem duração, a unidade é ignorada e as duas ficam nulas. Com duração, a unidade é obrigatória e
+     * o limite vale para o valor convertido em minutos.
+     */
+    private void aplicarDuracao(Atividade atividade, Integer duracao, UUID unidadeTempoId) {
+        if (duracao == null) {
+            atividade.setDuracao(null);
+            atividade.setUnidadeTempo(null);
+            return;
+        }
+        if (unidadeTempoId == null) {
+            throw ApiException.regra("UNIDADE_TEMPO_OBRIGATORIA", "Escolha a unidade da duração.");
+        }
+        UnidadeTempo unidade = unidadeTempoRepository.findById(unidadeTempoId)
+                .orElseThrow(() -> ApiException.regra("UNIDADE_TEMPO_INVALIDA", "Unidade de tempo inválida."));
+        int minutos;
+        try {
+            minutos = unidade.paraMinutos(duracao);
+        } catch (ArithmeticException estouro) {
+            minutos = Integer.MAX_VALUE;
+        }
+        if (minutos > DURACAO_MAXIMA_MINUTOS) {
+            throw ApiException.regra("DURACAO_INVALIDA", "A duração máxima é de 10 horas (600 minutos).");
+        }
+        atividade.setDuracao(duracao);
+        atividade.setUnidadeTempo(unidade);
+    }
+
     private void aplicar(Atividade atividade, AtividadeRequest req) {
         if (new HashSet<>(req.getQuestaoIds()).size() != req.getQuestaoIds().size()) {
             throw ApiException.regra("QUESTAO_REPETIDA", "A mesma questão foi incluída mais de uma vez.");
@@ -135,7 +169,7 @@ public class AtividadeService {
         validarTentativas(req.getTipo(), req.getMaxTentativas());
         atividade.setTitulo(req.getTitulo().trim());
         atividade.setTipo(req.getTipo());
-        atividade.setDuracaoMinutos(req.getDuracaoMinutos());
+        aplicarDuracao(atividade, req.getDuracao(), req.getUnidadeTempoId());
         atividade.setMaxTentativas(req.getMaxTentativas());
 
         int ordem = 0;

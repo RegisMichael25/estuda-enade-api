@@ -23,7 +23,8 @@ public final class DesempenhoDtos {
     }
 
     public record AtividadeRecente(UUID id, String titulo, String tipo, String status, int totalQuestoes,
-                                   Integer duracaoMinutos, long concluiram) {
+                                   Integer duracaoMinutos, Integer duracao, UnidadeTempoResponse unidadeTempo,
+                                   long concluiram) {
     }
 
     /** Painel inicial do professor para uma turma. */
@@ -38,7 +39,8 @@ public final class DesempenhoDtos {
 
     /** Atividade recente no painel inicial, com a turma a que pertence. */
     public record AtividadeRecentePainel(UUID id, String titulo, String tipo, String status, int totalQuestoes,
-                                         Integer duracaoMinutos, long concluiram, ItemResponse turma,
+                                         Integer duracaoMinutos, Integer duracao,
+                                         UnidadeTempoResponse unidadeTempo, long concluiram, ItemResponse turma,
                                          long totalAlunos) {
     }
 

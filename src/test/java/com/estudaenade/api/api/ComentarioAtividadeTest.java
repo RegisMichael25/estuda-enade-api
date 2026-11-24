@@ -32,7 +32,7 @@ class ComentarioAtividadeTest extends IntegrationTest {
         String questao = questaoPublicada(prof, curso, criarTema(prof, curso, "Redes"), 1);
 
         atividade = ler(post("/api/v1/professor/turmas/" + turmaId + "/atividades", prof, """
-                {"titulo":"Simulado 1","tipo":"SIMULADO","duracaoMinutos":null,"maxTentativas":2,"questaoIds":["%s"]}
+                {"titulo":"Simulado 1","tipo":"SIMULADO","duracao":null,"maxTentativas":2,"questaoIds":["%s"]}
                 """.formatted(questao)).andExpect(status().isCreated()), "$.id");
         post("/api/v1/professor/atividades/" + atividade + "/publicar", prof, null).andExpect(status().isOk());
 
@@ -148,7 +148,7 @@ class ComentarioAtividadeTest extends IntegrationTest {
     @Test
     void rascunhoNaoRecebeComentarioEAlunoNaoVe() throws Exception {
         String rascunho = ler(post("/api/v1/professor/turmas/" + turmaId + "/atividades", prof, """
-                {"titulo":"Rascunho","tipo":"LISTA","duracaoMinutos":null,"maxTentativas":null,"questaoIds":[]}
+                {"titulo":"Rascunho","tipo":"LISTA","duracao":null,"maxTentativas":null,"questaoIds":[]}
                 """).andExpect(status().isCreated()), "$.id");
 
         get("/api/v1/professor/atividades/" + rascunho + "/comentarios", prof)
