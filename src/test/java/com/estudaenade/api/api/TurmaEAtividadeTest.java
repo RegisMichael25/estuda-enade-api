@@ -80,7 +80,7 @@ class TurmaEAtividadeTest extends IntegrationTest {
     void professorNaoAcessaTurmaDeOutroProfessor() throws Exception {
         String outro = entrarComo("PROFESSOR", "Prof. Lima");
         get("/api/v1/professor/turmas/" + turmaId, outro).andExpect(status().isNotFound());
-        get("/api/v1/professor/turmas/" + turmaId + "/resumo", outro).andExpect(status().isNotFound());
+        get("/api/v1/professor/painel?turmaId=" + turmaId, outro).andExpect(status().isNotFound());
         get("/api/v1/professor/turmas", outro).andExpect(jsonPath("$", hasSize(0)));
     }
 
@@ -439,11 +439,11 @@ class TurmaEAtividadeTest extends IntegrationTest {
                 .andExpect(jsonPath("$.alunos[1].acertos").doesNotExist())
                 .andExpect(jsonPath("$.porTema", hasSize(2)));
 
-        get("/api/v1/professor/turmas/" + turmaId + "/resumo", prof)
+        get("/api/v1/professor/painel?turmaId=" + turmaId, prof)
                 .andExpect(jsonPath("$.totalAlunos").value(2))
                 .andExpect(jsonPath("$.questoesNoBanco").value(2))
                 .andExpect(jsonPath("$.atividadesAbertas").value(1))
-                .andExpect(jsonPath("$.mediaPercentual").value(50))
+                .andExpect(jsonPath("$.turmas[0].mediaPercentual").value(50))
                 .andExpect(jsonPath("$.atividades[0].concluiram").value(1));
 
         String anaId = ler(get("/api/v1/eu", ana), "$.id");

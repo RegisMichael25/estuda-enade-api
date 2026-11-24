@@ -141,13 +141,12 @@ Erros seguem `{ "codigo": "...", "mensagem": "..." }`.
 | GET | `/professores/pendentes` | Professores aguardando aprovação |
 | POST | `/professores/{id}/aprovar` | Aprova o cadastro de um professor pendente |
 | GET, POST | `/convites` | Meus convites de professor · gera um convite (o código só aparece na criação) |
-| GET | `/painel` | Painel inicial: números, turmas ativas e atividades recentes |
+| GET | `/painel` | Painel inicial: números, turmas ativas e atividades recentes (`turmaId` opcional: só essa turma) |
 | GET, POST | `/turmas` | Lista (só ativas; `?incluirArquivadas=true` traz todas) · cria turma (gera o código de convite) |
 | GET, PUT | `/turmas/{id}` | Detalhe com alunos · edita |
 | POST | `/turmas/{id}/convite` | Gera novo código; o antigo deixa de valer |
 | POST | `/turmas/{id}/arquivar`, `/reativar` | Arquiva a turma · volta a turma para a lista |
 | DELETE | `/turmas/{id}/alunos/{alunoId}` | Remove o aluno da turma |
-| GET | `/turmas/{id}/resumo` | Painel: alunos, banco, atividades abertas, média |
 | GET | `/turmas/{id}/alunos/{alunoId}/desempenho` | Desempenho do aluno nas atividades da turma |
 | GET, POST | `/turmas/{id}/atividades` | Lista · cria atividade (rascunho) |
 | GET | `/questoes/anos` | Anos das questões visíveis no banco (`cursoId` opcional), para o filtro |

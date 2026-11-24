@@ -6,7 +6,6 @@ import com.estudaenade.api.api.contrato.dto.TurmaRequest;
 import com.estudaenade.api.api.dto.AtividadeDtos.AtividadeResponse;
 import com.estudaenade.api.api.dto.DesempenhoDtos.DesempenhoAlunoTurmaResponse;
 import com.estudaenade.api.api.dto.DesempenhoDtos.PainelProfessorResponse;
-import com.estudaenade.api.api.dto.DesempenhoDtos.ResumoTurmaResponse;
 import com.estudaenade.api.api.dto.TurmaDtos.TurmaDetalheResponse;
 import com.estudaenade.api.api.dto.TurmaDtos.TurmaResponse;
 import com.estudaenade.api.domain.service.AtividadeService;
@@ -28,10 +27,10 @@ public class ProfessorTurmaController implements ProfessorTurmaApi {
     private final AtividadeService atividadeService;
     private final DesempenhoService desempenhoService;
 
-    /** Painel inicial: números e atividades recentes de todas as turmas ativas. */
+    /** Painel inicial: números e atividades recentes das turmas ativas, ou só de {@code turmaId}. */
     @Override
-    public PainelProfessorResponse painelDoProfessor() {
-        return desempenhoService.painelDoProfessor(professor());
+    public PainelProfessorResponse painelDoProfessor(UUID turmaId) {
+        return desempenhoService.painelDoProfessor(professor(), turmaId);
     }
 
     @Override
@@ -78,12 +77,6 @@ public class ProfessorTurmaController implements ProfessorTurmaApi {
     @Override
     public DesempenhoAlunoTurmaResponse desempenhoDoAluno(UUID turmaId, UUID alunoId) {
         return desempenhoService.doAlunoNaTurma(professor(), turmaId, alunoId);
-    }
-
-    /** Números do painel inicial: alunos, banco, atividades abertas e média da turma. */
-    @Override
-    public ResumoTurmaResponse resumoDaTurma(UUID turmaId) {
-        return desempenhoService.resumoDaTurma(professor(), turmaId);
     }
 
     @Override

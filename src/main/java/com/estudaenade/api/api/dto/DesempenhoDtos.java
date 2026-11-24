@@ -22,16 +22,6 @@ public final class DesempenhoDtos {
                                           List<TemaDesempenho> porTema) {
     }
 
-    public record AtividadeRecente(UUID id, String titulo, String tipo, String status, int totalQuestoes,
-                                   Integer duracaoMinutos, Integer duracao, UnidadeTempoResponse unidadeTempo,
-                                   long concluiram) {
-    }
-
-    /** Painel inicial do professor para uma turma. */
-    public record ResumoTurmaResponse(long totalAlunos, long questoesNoBanco, long atividadesAbertas,
-                                      Integer mediaPercentual, List<AtividadeRecente> atividades) {
-    }
-
     /** Turma ativa no painel inicial do professor. */
     public record PainelTurma(UUID id, String nome, String periodo, ItemResponse curso, long totalAlunos,
                               long atividadesAbertas, Integer mediaPercentual) {
