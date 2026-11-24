@@ -35,8 +35,12 @@ public class Atividade {
     @Column(nullable = false)
     private TipoAtividade tipo;
 
-    /** Nulo = sem tempo. */
-    private Integer duracaoMinutos;
+    /** Valor na unidade escolhida pelo professor. Nulo = sem tempo. */
+    private Integer duracao;
+
+    /** Unidade de {@link #duracao}. Nula quando não há duração (restrição no banco). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    private UnidadeTempo unidadeTempo;
 
     /** Nulo = tentativas ilimitadas. */
     private Integer maxTentativas;
@@ -56,4 +60,9 @@ public class Atividade {
     @OneToMany(mappedBy = "atividade", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("ordem")
     private List<AtividadeQuestao> questoes = new ArrayList<>();
+
+    /** Duração convertida para minutos; nula quando a atividade não tem tempo. */
+    public Integer duracaoEmMinutos() {
+        return duracao == null ? null : unidadeTempo.paraMinutos(duracao);
+    }
 }

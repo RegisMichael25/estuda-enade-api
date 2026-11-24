@@ -182,6 +182,7 @@
 								<schemaMapping>Encerramento=com.estudaenade.api.domain.enums.Encerramento</schemaMapping>
 								<schemaMapping>ErroResponse=com.estudaenade.api.exception.GlobalExceptionHandler.ErroResponse</schemaMapping>
 								<schemaMapping>ItemResponse=com.estudaenade.api.api.dto.ItemResponse</schemaMapping>
+								<schemaMapping>UnidadeTempoResponse=com.estudaenade.api.api.dto.UnidadeTempoResponse</schemaMapping>
 								<schemaMapping>PaginaQuestaoResponse=com.estudaenade.api.api.dto.Pagina&lt;com.estudaenade.api.api.dto.QuestaoDtos.QuestaoResponse&gt;</schemaMapping>
 								<schemaMapping>PaginaQuestaoAlunoResponse=com.estudaenade.api.api.dto.Pagina&lt;com.estudaenade.api.api.dto.QuestaoDtos.QuestaoAlunoResponse&gt;</schemaMapping>
 								<schemaMapping>UsuarioResponse=com.estudaenade.api.api.dto.AuthDtos.UsuarioResponse</schemaMapping>

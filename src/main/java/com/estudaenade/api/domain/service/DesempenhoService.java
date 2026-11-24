@@ -4,7 +4,9 @@ import com.estudaenade.api.api.dto.AtividadeDtos.AtividadeResponse;
 import com.estudaenade.api.api.dto.AtividadeDtos.TentativaResumoResponse;
 import com.estudaenade.api.api.dto.DesempenhoDtos.*;
 import com.estudaenade.api.api.dto.ItemResponse;
+import com.estudaenade.api.api.dto.UnidadeTempoResponse;
 import com.estudaenade.api.domain.model.Atividade;
+import com.estudaenade.api.domain.model.UnidadeTempo;
 import com.estudaenade.api.domain.model.Usuario;
 import com.estudaenade.api.domain.repository.ParticipacaoRepository;
 import com.estudaenade.api.domain.repository.TentativaRepository;
@@ -16,6 +18,8 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -43,6 +47,24 @@ public class DesempenhoService {
 
     private static final String RESPOSTAS_DE_TENTATIVAS =
             "resposta_tentativa r join tentativa t on t.id = r.tentativa_id join atividade a on a.id = t.atividade_id";
+
+    /** Duração da atividade {@code a} com a unidade; usar junto de {@link #DURACAO_JOIN}. */
+    private static final String DURACAO_COLUNAS =
+            "a.duracao, ut.id as ut_id, ut.nome as ut_nome, ut.codigo as ut_codigo, ut.descricao as ut_descricao";
+    private static final String DURACAO_JOIN = "left join unidade_tempo ut on ut.id = a.unidade_tempo_id";
+
+    /** Duração lida de {@link #DURACAO_COLUNAS}. A conversão para minutos é a de {@link UnidadeTempo}, não do SQL. */
+    private record DuracaoLida(Integer minutos, Integer duracao, UnidadeTempoResponse unidade) {
+        static DuracaoLida de(ResultSet rs) throws SQLException {
+            Integer duracao = (Integer) rs.getObject("duracao");
+            if (duracao == null) {
+                return new DuracaoLida(null, null, null);
+            }
+            String codigo = rs.getString("ut_codigo");
+            return new DuracaoLida(UnidadeTempo.minutos(codigo, duracao), duracao, new UnidadeTempoResponse(
+                    rs.getObject("ut_id", UUID.class), rs.getString("ut_nome"), codigo, rs.getString("ut_descricao")));
+        }
+    }
 
     private final JdbcTemplate jdbc;
     private final TurmaService turmaService;
@@ -99,7 +121,7 @@ public class DesempenhoService {
         long questoesNoBanco = contar("select count(*) from questao where status = 'PUBLICADA'");
 
         List<AtividadeRecentePainel> atividades = jdbc.query("""
-                select a.id, a.titulo, a.tipo, a.status, a.duracao_minutos, t.id as turma_id, t.nome as turma_nome,
+                select a.id, a.titulo, a.tipo, a.status, %s, t.id as turma_id, t.nome as turma_nome,
                        (select count(*) from atividade_questao aq where aq.atividade_id = a.id) as total_questoes,
                        (select count(distinct te.aluno_id) from tentativa te
                          join participacao p on p.turma_id = a.turma_id and p.aluno_id = te.aluno_id
@@ -107,14 +129,18 @@ public class DesempenhoService {
                        (select count(*) from participacao p where p.turma_id = t.id) as total_alunos
                 from atividade a
                 join turma t on t.id = a.turma_id
+                %s
                 where t.professor_id = ? and t.arquivada_em is null and a.status <> 'RASCUNHO'
                 order by a.publicada_em desc
                 limit 6
-                """, (rs, i) -> new AtividadeRecentePainel(rs.getObject("id", UUID.class), rs.getString("titulo"),
-                rs.getString("tipo"), rs.getString("status"), rs.getInt("total_questoes"),
-                (Integer) rs.getObject("duracao_minutos"), rs.getLong("concluiram"),
-                new ItemResponse(rs.getObject("turma_id", UUID.class), rs.getString("turma_nome")),
-                rs.getLong("total_alunos")), professorId);
+                """.formatted(DURACAO_COLUNAS, DURACAO_JOIN), (rs, i) -> {
+            DuracaoLida d = DuracaoLida.de(rs);
+            return new AtividadeRecentePainel(rs.getObject("id", UUID.class), rs.getString("titulo"),
+                    rs.getString("tipo"), rs.getString("status"), rs.getInt("total_questoes"),
+                    d.minutos(), d.duracao(), d.unidade(), rs.getLong("concluiram"),
+                    new ItemResponse(rs.getObject("turma_id", UUID.class), rs.getString("turma_nome")),
+                    rs.getLong("total_alunos"));
+        }, professorId);
 
         return new PainelProfessorResponse(turmas.size(), totalAlunos, atividadesAbertas, questoesNoBanco,
                 turmas, atividades);
@@ -132,18 +158,22 @@ public class DesempenhoService {
                 """, Integer.class, turmaId);
 
         List<AtividadeRecente> atividades = jdbc.query("""
-                select a.id, a.titulo, a.tipo, a.status, a.duracao_minutos,
+                select a.id, a.titulo, a.tipo, a.status, %s,
                        (select count(*) from atividade_questao aq where aq.atividade_id = a.id) as total_questoes,
                        (select count(distinct t.aluno_id) from tentativa t
                          join participacao p on p.turma_id = a.turma_id and p.aluno_id = t.aluno_id
                          where t.atividade_id = a.id and t.finalizada_em is not null) as concluiram
                 from atividade a
+                %s
                 where a.turma_id = ? and a.status <> 'RASCUNHO'
                 order by a.publicada_em desc
                 limit 5
-                """, (rs, i) -> new AtividadeRecente(rs.getObject("id", UUID.class), rs.getString("titulo"),
-                rs.getString("tipo"), rs.getString("status"), rs.getInt("total_questoes"),
-                (Integer) rs.getObject("duracao_minutos"), rs.getLong("concluiram")), turmaId);
+                """.formatted(DURACAO_COLUNAS, DURACAO_JOIN), (rs, i) -> {
+            DuracaoLida d = DuracaoLida.de(rs);
+            return new AtividadeRecente(rs.getObject("id", UUID.class), rs.getString("titulo"),
+                    rs.getString("tipo"), rs.getString("status"), rs.getInt("total_questoes"),
+                    d.minutos(), d.duracao(), d.unidade(), rs.getLong("concluiram"));
+        }, turmaId);
 
         return new ResumoTurmaResponse(participacaoRepository.countByTurmaId(turmaId), questoesNoBanco,
                 atividadesAbertas, media, atividades);

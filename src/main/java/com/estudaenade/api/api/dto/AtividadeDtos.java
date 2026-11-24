@@ -23,12 +23,18 @@ public final class AtividadeDtos {
 
     // ---------- professor ----------
 
+    /**
+     * @param duracaoMinutos duração já convertida para minutos
+     * @param duracao        valor digitado pelo professor, na unidade de {@code unidadeTempo}
+     */
     public record AtividadeResponse(UUID id, UUID turmaId, String titulo, TipoAtividade tipo,
-                                    Integer duracaoMinutos, Integer maxTentativas, StatusAtividade status,
+                                    Integer duracaoMinutos, Integer duracao, UnidadeTempoResponse unidadeTempo,
+                                    Integer maxTentativas, StatusAtividade status,
                                     int totalQuestoes, Instant criadaEm, Instant publicadaEm) {
         public static AtividadeResponse de(Atividade a) {
             return new AtividadeResponse(a.getId(), a.getTurma().getId(), a.getTitulo(), a.getTipo(),
-                    a.getDuracaoMinutos(), a.getMaxTentativas(), a.getStatus(),
+                    a.duracaoEmMinutos(), a.getDuracao(), UnidadeTempoResponse.de(a.getUnidadeTempo()),
+                    a.getMaxTentativas(), a.getStatus(),
                     a.getQuestoes().size(), a.getCriadaEm(), a.getPublicadaEm());
         }
     }
@@ -39,7 +45,8 @@ public final class AtividadeDtos {
     // ---------- aluno ----------
 
     public record AtividadeAlunoResponse(UUID id, String titulo, TipoAtividade tipo, ItemResponse turma,
-                                         int totalQuestoes, Integer duracaoMinutos, Integer maxTentativas,
+                                         int totalQuestoes, Integer duracaoMinutos, Integer duracao,
+                                         UnidadeTempoResponse unidadeTempo, Integer maxTentativas,
                                          StatusAtividade status, long tentativasFeitas, UUID tentativaAbertaId,
                                          Integer melhorAcertos, boolean podeIniciar) {
     }
