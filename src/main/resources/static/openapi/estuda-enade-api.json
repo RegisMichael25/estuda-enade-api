@@ -1002,8 +1002,20 @@
           "ProfessorTurma"
         ],
         "operationId": "painelDoProfessor",
-        "summary": "Painel inicial: números e atividades recentes de todas as turmas ativas",
-        "description": "Considera só as turmas não arquivadas. `totalAlunos` conta cada aluno uma vez, mesmo que esteja em mais de uma turma.",
+        "summary": "Painel inicial: números e atividades recentes das turmas ativas, ou de uma turma",
+        "description": "Considera só as turmas não arquivadas do professor. `totalAlunos` conta cada aluno uma vez, mesmo que esteja em mais de uma turma. Com `turmaId`, todos os números, a lista `turmas` (com um item) e as atividades recentes são só dessa turma. `questoesNoBanco` é sempre o total do banco.",
+        "parameters": [
+          {
+            "name": "turmaId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Restringe o painel a uma turma ativa do professor. Sem ele, o painel agrega todas as turmas ativas."
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK.",
@@ -1017,6 +1029,16 @@
           },
           "403": {
             "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A turma de `turmaId` não existe, pertence a outro professor ou está arquivada.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1509,61 +1531,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DesempenhoAlunoTurmaResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErroResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Não encontrado, ou pertence a outro usuário.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErroResponse"
-                }
-              }
-            }
-          },
-          "default": {
-            "$ref": "#/components/responses/Erro"
-          }
-        }
-      }
-    },
-    "/api/v1/professor/turmas/{turmaId}/resumo": {
-      "get": {
-        "tags": [
-          "ProfessorTurma"
-        ],
-        "operationId": "resumoDaTurma",
-        "summary": "Painel da turma: alunos, banco, atividades abertas e média",
-        "parameters": [
-          {
-            "name": "turmaId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResumoTurmaResponse"
                 }
               }
             }
@@ -5773,98 +5740,6 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TemaDesempenho"
-            }
-          }
-        }
-      },
-      "AtividadeRecente": {
-        "type": "object",
-        "required": [
-          "id",
-          "titulo",
-          "tipo",
-          "status",
-          "totalQuestoes",
-          "duracaoMinutos",
-          "duracao",
-          "unidadeTempo",
-          "concluiram"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "titulo": {
-            "type": "string"
-          },
-          "tipo": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "totalQuestoes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "duracaoMinutos": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true,
-            "description": "Duração convertida para minutos. Nulo = sem tempo."
-          },
-          "duracao": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true,
-            "description": "Valor digitado pelo professor, na unidade de `unidadeTempo`."
-          },
-          "unidadeTempo": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/UnidadeTempoResponse"
-              }
-            ],
-            "nullable": true
-          },
-          "concluiram": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "ResumoTurmaResponse": {
-        "type": "object",
-        "required": [
-          "totalAlunos",
-          "questoesNoBanco",
-          "atividadesAbertas",
-          "mediaPercentual",
-          "atividades"
-        ],
-        "properties": {
-          "totalAlunos": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "questoesNoBanco": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "atividadesAbertas": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "mediaPercentual": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "atividades": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AtividadeRecente"
             }
           }
         }

@@ -209,8 +209,6 @@
 								<schemaMapping>ResultadoTentativaResponse=com.estudaenade.api.api.dto.AtividadeDtos.ResultadoTentativaResponse</schemaMapping>
 								<schemaMapping>TemaDesempenho=com.estudaenade.api.api.dto.DesempenhoDtos.TemaDesempenho</schemaMapping>
 								<schemaMapping>DesempenhoAlunoResponse=com.estudaenade.api.api.dto.DesempenhoDtos.DesempenhoAlunoResponse</schemaMapping>
-								<schemaMapping>AtividadeRecente=com.estudaenade.api.api.dto.DesempenhoDtos.AtividadeRecente</schemaMapping>
-								<schemaMapping>ResumoTurmaResponse=com.estudaenade.api.api.dto.DesempenhoDtos.ResumoTurmaResponse</schemaMapping>
 								<schemaMapping>PainelTurma=com.estudaenade.api.api.dto.DesempenhoDtos.PainelTurma</schemaMapping>
 								<schemaMapping>AtividadeRecentePainel=com.estudaenade.api.api.dto.DesempenhoDtos.AtividadeRecentePainel</schemaMapping>
 								<schemaMapping>PainelProfessorResponse=com.estudaenade.api.api.dto.DesempenhoDtos.PainelProfessorResponse</schemaMapping>

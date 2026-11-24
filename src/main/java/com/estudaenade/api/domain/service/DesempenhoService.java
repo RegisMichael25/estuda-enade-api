@@ -93,8 +93,20 @@ public class DesempenhoService {
 
     // ======================== professor ========================
 
-    /** Painel inicial: só turmas não arquivadas do professor. */
-    public PainelProfessorResponse painelDoProfessor(UUID professorId) {
+    /**
+     * Painel inicial: só turmas não arquivadas do professor; com {@code turmaId}, só essa turma.
+     *
+     * <p>O professor vem do token. O filtro por turma se soma a {@code t.professor_id = ?} em todas as consultas,
+     * nunca o substitui: a turma de outro professor responde 404 e, mesmo sem essa checagem, não traria dados.
+     */
+    public PainelProfessorResponse painelDoProfessor(UUID professorId, UUID turmaId) {
+        if (turmaId != null && turmaService.doProfessor(turmaId, professorId).isArquivada()) {
+            throw ApiException.naoEncontrado("Turma não encontrada.");
+        }
+        // Só a constante entra no SQL; o valor vai sempre como parâmetro.
+        String filtro = turmaId == null ? "" : " and t.id = ?";
+        Object[] args = turmaId == null ? new Object[]{professorId} : new Object[]{professorId, turmaId};
+
         List<PainelTurma> turmas = jdbc.query("""
                 select t.id, t.nome, t.periodo, c.id as curso_id, c.nome as curso_nome,
                        (select count(*) from participacao p where p.turma_id = t.id) as total_alunos,
@@ -104,19 +116,19 @@ public class DesempenhoService {
                          where a.turma_id = t.id and te.finalizada_em is not null) as media
                 from turma t
                 left join curso c on c.id = t.curso_id
-                where t.professor_id = ? and t.arquivada_em is null
+                where t.professor_id = ? and t.arquivada_em is null%s
                 order by t.criada_em desc
-                """, (rs, i) -> {
+                """.formatted(filtro), (rs, i) -> {
             UUID cursoId = rs.getObject("curso_id", UUID.class);
             return new PainelTurma(rs.getObject("id", UUID.class), rs.getString("nome"), rs.getString("periodo"),
                     cursoId == null ? null : new ItemResponse(cursoId, rs.getString("curso_nome")),
                     rs.getLong("total_alunos"), rs.getLong("abertas"), (Integer) rs.getObject("media"));
-        }, professorId);
+        }, args);
 
         long totalAlunos = contar("""
                 select count(distinct p.aluno_id) from participacao p join turma t on t.id = p.turma_id
-                where t.professor_id = ? and t.arquivada_em is null
-                """, professorId);
+                where t.professor_id = ? and t.arquivada_em is null%s
+                """.formatted(filtro), args);
         long atividadesAbertas = turmas.stream().mapToLong(PainelTurma::atividadesAbertas).sum();
         long questoesNoBanco = contar("select count(*) from questao where status = 'PUBLICADA'");
 
@@ -130,53 +142,20 @@ public class DesempenhoService {
                 from atividade a
                 join turma t on t.id = a.turma_id
                 %s
-                where t.professor_id = ? and t.arquivada_em is null and a.status <> 'RASCUNHO'
+                where t.professor_id = ? and t.arquivada_em is null and a.status <> 'RASCUNHO'%s
                 order by a.publicada_em desc
                 limit 6
-                """.formatted(DURACAO_COLUNAS, DURACAO_JOIN), (rs, i) -> {
+                """.formatted(DURACAO_COLUNAS, DURACAO_JOIN, filtro), (rs, i) -> {
             DuracaoLida d = DuracaoLida.de(rs);
             return new AtividadeRecentePainel(rs.getObject("id", UUID.class), rs.getString("titulo"),
                     rs.getString("tipo"), rs.getString("status"), rs.getInt("total_questoes"),
                     d.minutos(), d.duracao(), d.unidade(), rs.getLong("concluiram"),
                     new ItemResponse(rs.getObject("turma_id", UUID.class), rs.getString("turma_nome")),
                     rs.getLong("total_alunos"));
-        }, professorId);
+        }, args);
 
         return new PainelProfessorResponse(turmas.size(), totalAlunos, atividadesAbertas, questoesNoBanco,
                 turmas, atividades);
-    }
-
-    public ResumoTurmaResponse resumoDaTurma(UUID professorId, UUID turmaId) {
-        turmaService.doProfessor(turmaId, professorId);
-
-        long questoesNoBanco = contar("select count(*) from questao where status = 'PUBLICADA'");
-        long atividadesAbertas = contar("select count(*) from atividade where turma_id = ? and status = 'PUBLICADA'", turmaId);
-        Integer media = jdbc.queryForObject("""
-                select round(100.0 * sum(t.acertos) / nullif(sum(t.total), 0))::int
-                from tentativa t join atividade a on a.id = t.atividade_id
-                where a.turma_id = ? and t.finalizada_em is not null
-                """, Integer.class, turmaId);
-
-        List<AtividadeRecente> atividades = jdbc.query("""
-                select a.id, a.titulo, a.tipo, a.status, %s,
-                       (select count(*) from atividade_questao aq where aq.atividade_id = a.id) as total_questoes,
-                       (select count(distinct t.aluno_id) from tentativa t
-                         join participacao p on p.turma_id = a.turma_id and p.aluno_id = t.aluno_id
-                         where t.atividade_id = a.id and t.finalizada_em is not null) as concluiram
-                from atividade a
-                %s
-                where a.turma_id = ? and a.status <> 'RASCUNHO'
-                order by a.publicada_em desc
-                limit 5
-                """.formatted(DURACAO_COLUNAS, DURACAO_JOIN), (rs, i) -> {
-            DuracaoLida d = DuracaoLida.de(rs);
-            return new AtividadeRecente(rs.getObject("id", UUID.class), rs.getString("titulo"),
-                    rs.getString("tipo"), rs.getString("status"), rs.getInt("total_questoes"),
-                    d.minutos(), d.duracao(), d.unidade(), rs.getLong("concluiram"));
-        }, turmaId);
-
-        return new ResumoTurmaResponse(participacaoRepository.countByTurmaId(turmaId), questoesNoBanco,
-                atividadesAbertas, media, atividades);
     }
 
     /** Resultado da turma em uma atividade. Com várias tentativas, vale a melhor de cada aluno. */

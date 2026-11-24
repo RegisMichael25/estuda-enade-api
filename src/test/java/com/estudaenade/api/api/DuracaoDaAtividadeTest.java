@@ -79,7 +79,7 @@ class DuracaoDaAtividadeTest extends IntegrationTest {
                 .andExpect(jsonPath("$.atividades[0].duracao").value(2))
                 .andExpect(jsonPath("$.atividades[0].unidadeTempo.codigo").value("h"))
                 .andExpect(jsonPath("$.atividades[0].duracaoMinutos").value(120));
-        get("/api/v1/professor/turmas/" + turmaId + "/resumo", prof)
+        get("/api/v1/professor/painel?turmaId=" + turmaId, prof)
                 .andExpect(jsonPath("$.atividades[0].duracao").value(2))
                 .andExpect(jsonPath("$.atividades[0].unidadeTempo.nome").value("Horas"))
                 .andExpect(jsonPath("$.atividades[0].duracaoMinutos").value(120));
