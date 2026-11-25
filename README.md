@@ -178,7 +178,20 @@ Erros seguem `{ "codigo": "...", "mensagem": "..." }`.
 | GET, POST | `/atividades/{id}/comentarios` | Mural da atividade (depois de enviar a primeira tentativa) · comenta |
 | PUT, DELETE | `/comentarios/{id}` | Edita · apaga o próprio comentário |
 | GET | `/pratica/anos` | Anos com questões publicadas (`cursoId` opcional) |
-| GET | `/pratica/questoes` | Questões para prática livre (`cursoId`, `temaId`, `ano`, `busca`) |
+| GET | `/pratica/questoes` | Questões para prática livre (`cursoId`, `temaId` e `ano` repetíveis, `historico`, `busca`) |
+| GET | `/pratica/contagem` | Quantas questões há em cada tema do curso (`cursoId`, `ano` repetível, `historico`), com o desempenho do aluno no tema |
+| POST | `/pratica/sortear` | Sorteia de 1 a 100 questões para a prova do aluno, sem repetir as de `excluirIds`; `equilibrar` reparte entre os temas |
+
+`historico` filtra pelo que o aluno já respondeu (prática e atividades enviadas): `TODAS` (padrão), `NAO_RESPONDIDAS` ou `ERRADAS` (a última resposta dele à questão foi errada).
+
+| GET | `/provas` | Provas que o aluno montou (histórico "Minhas provas"); só dele, fora da turma |
+| POST | `/provas` | Salva a prova montada (`questaoIds`, `nome` opcional) |
+| GET | `/provas/{id}` | Prova com as respostas já dadas; gabarito só nas respondidas e ainda disponíveis |
+| POST | `/provas/{id}/questoes/{questaoId}/responder` | Responde na prova; também conta no desempenho do aluno |
+| POST | `/provas/{id}/concluir` | Conclui; depois disso não aceita mais respostas |
+| POST | `/provas/{id}/refazer` | Nova prova com as mesmas questões (só as ainda disponíveis) |
+| POST | `/provas/{id}/erradas` | Nova prova só com as erradas ou sem resposta |
+| DELETE | `/provas/{id}` | Tira do histórico; as respostas continuam no desempenho |
 | POST | `/pratica/questoes/{id}/responder` | Responde e recebe gabarito e explicação |
 | POST | `/questoes/{id}/sinalizacoes` | Sinaliza possível erro |
 | GET | `/desempenho` | Acertos gerais e por tema |

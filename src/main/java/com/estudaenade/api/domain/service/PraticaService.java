@@ -1,6 +1,8 @@
 package com.estudaenade.api.domain.service;
 
+import com.estudaenade.api.api.dto.QuestaoDtos.ContagemTemaResponse;
 import com.estudaenade.api.api.dto.QuestaoDtos.GabaritoResponse;
+import com.estudaenade.api.domain.enums.HistoricoPratica;
 import com.estudaenade.api.domain.model.Alternativa;
 import com.estudaenade.api.domain.model.Questao;
 import com.estudaenade.api.domain.model.RespostaPratica;
@@ -11,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Prática livre: o aluno responde uma questão do banco e recebe gabarito e explicação na hora. */
@@ -21,6 +26,16 @@ public class PraticaService {
     private final QuestaoService questaoService;
     private final RespostaPraticaRepository respostaPraticaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final DesempenhoService desempenhoService;
+
+    /** Questões disponíveis por tema, com o desempenho do aluno em cada um (para destacar os temas fracos). */
+    @Transactional(readOnly = true)
+    public List<ContagemTemaResponse> contagem(UUID alunoId, UUID cursoId, List<Integer> anos, HistoricoPratica historico) {
+        Map<UUID, long[]> desempenho = new HashMap<>();
+        desempenhoService.doAluno(alunoId).porTema()
+                .forEach(t -> desempenho.put(t.temaId(), new long[]{t.respondidas(), t.acertos()}));
+        return questaoService.contagemDaPratica(alunoId, cursoId, anos, historico, desempenho);
+    }
 
     @Transactional
     public GabaritoResponse responder(UUID alunoId, UUID questaoId, UUID alternativaId) {

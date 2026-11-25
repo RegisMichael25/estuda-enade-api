@@ -5,20 +5,27 @@ import com.estudaenade.api.api.contrato.dto.ComentarioRequest;
 import com.estudaenade.api.api.dto.ComentarioDtos.ComentarioResponse;
 import com.estudaenade.api.api.dto.ComentarioDtos.MuralResponse;
 import com.estudaenade.api.domain.service.ComentarioService;
+import com.estudaenade.api.api.contrato.dto.CriarProvaPessoalRequest;
 import com.estudaenade.api.api.contrato.dto.EntrarTurmaRequest;
 import com.estudaenade.api.api.contrato.dto.ResponderRequest;
 import com.estudaenade.api.api.contrato.dto.SinalizacaoRequest;
+import com.estudaenade.api.api.contrato.dto.SortearPraticaRequest;
 import com.estudaenade.api.api.dto.AtividadeDtos.AtividadeAlunoResponse;
 import com.estudaenade.api.api.dto.AtividadeDtos.ResultadoTentativaResponse;
 import com.estudaenade.api.api.dto.AtividadeDtos.TentativaEstadoResponse;
 import com.estudaenade.api.api.dto.AtividadeDtos.TentativaResumoResponse;
 import com.estudaenade.api.api.dto.DesempenhoDtos.DesempenhoAlunoResponse;
 import com.estudaenade.api.api.dto.Pagina;
+import com.estudaenade.api.api.dto.ProvaPessoalDtos.ProvaPessoalResponse;
+import com.estudaenade.api.api.dto.ProvaPessoalDtos.ProvaPessoalResumoResponse;
+import com.estudaenade.api.api.dto.QuestaoDtos.ContagemTemaResponse;
 import com.estudaenade.api.api.dto.QuestaoDtos.GabaritoResponse;
 import com.estudaenade.api.api.dto.QuestaoDtos.QuestaoAlunoResponse;
 import com.estudaenade.api.api.dto.TurmaDtos.TurmaAlunoResponse;
+import com.estudaenade.api.domain.enums.HistoricoPratica;
 import com.estudaenade.api.domain.service.DesempenhoService;
 import com.estudaenade.api.domain.service.PraticaService;
+import com.estudaenade.api.domain.service.ProvaPessoalService;
 import com.estudaenade.api.domain.service.QuestaoService;
 import com.estudaenade.api.domain.service.TentativaService;
 import com.estudaenade.api.domain.service.TurmaService;
@@ -42,6 +49,7 @@ public class AlunoController implements AlunoApi {
     private final TentativaService tentativaService;
     private final QuestaoService questaoService;
     private final PraticaService praticaService;
+    private final ProvaPessoalService provaPessoalService;
     private final DesempenhoService desempenhoService;
 
     // ---------- turmas ----------
@@ -114,15 +122,71 @@ public class AlunoController implements AlunoApi {
 
     /** Questões publicadas, sem gabarito e sem as reservadas para atividades ainda não concluídas. */
     @Override
-    public Pagina<QuestaoAlunoResponse> questoesDaPratica(UUID cursoId, UUID temaId, Integer ano, String busca,
+    public Pagina<QuestaoAlunoResponse> questoesDaPratica(UUID cursoId, List<UUID> temaId, List<Integer> ano,
+                                                          HistoricoPratica historico, String busca,
                                                           Integer pagina, Integer tamanho) {
-        return questaoService.listarParaPratica(aluno(), cursoId, temaId, ano, busca, pagina, tamanho);
+        return questaoService.listarParaPratica(aluno(), cursoId, temaId, ano, historico, busca, pagina, tamanho);
+    }
+
+    /** Quantas questões há em cada tema do curso, para o aluno montar a própria prova. */
+    @Override
+    public List<ContagemTemaResponse> contagemDaPratica(UUID cursoId, List<Integer> ano, HistoricoPratica historico) {
+        return praticaService.contagem(aluno(), cursoId, ano, historico);
+    }
+
+    /** Sorteia questões para a prova montada pelo aluno. Nada disso vai para a turma. */
+    @Override
+    public List<QuestaoAlunoResponse> sortearPratica(SortearPraticaRequest req) {
+        return questaoService.sortearParaPratica(aluno(), req.getCursoId(), req.getTemaIds(), req.getAnos(),
+                req.getHistorico(), Boolean.TRUE.equals(req.getEquilibrar()), req.getQuantidade(), req.getExcluirIds());
     }
 
     /** Responde e recebe gabarito e explicação na hora. */
     @Override
     public GabaritoResponse responderNaPratica(UUID questaoId, ResponderRequest req) {
         return praticaService.responder(aluno(), questaoId, req.getAlternativaId());
+    }
+
+    // ---------- provas montadas pelo aluno (só dele, fora da turma) ----------
+
+    @Override
+    public List<ProvaPessoalResumoResponse> minhasProvas() {
+        return provaPessoalService.listar(aluno());
+    }
+
+    @Override
+    public ProvaPessoalResponse criarProva(CriarProvaPessoalRequest req) {
+        return provaPessoalService.criar(aluno(), req.getQuestaoIds(), req.getNome());
+    }
+
+    @Override
+    public ProvaPessoalResponse detalharProva(UUID provaId) {
+        return provaPessoalService.detalhar(aluno(), provaId);
+    }
+
+    @Override
+    public void excluirProva(UUID provaId) {
+        provaPessoalService.excluir(aluno(), provaId);
+    }
+
+    @Override
+    public GabaritoResponse responderNaProva(UUID provaId, UUID questaoId, ResponderRequest req) {
+        return provaPessoalService.responder(aluno(), provaId, questaoId, req.getAlternativaId());
+    }
+
+    @Override
+    public ProvaPessoalResponse concluirProva(UUID provaId) {
+        return provaPessoalService.concluir(aluno(), provaId);
+    }
+
+    @Override
+    public ProvaPessoalResponse refazerProva(UUID provaId) {
+        return provaPessoalService.refazer(aluno(), provaId);
+    }
+
+    @Override
+    public ProvaPessoalResponse provaComErradas(UUID provaId) {
+        return provaPessoalService.comErradas(aluno(), provaId);
     }
 
     @Override

@@ -3948,18 +3948,39 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "explode": true,
+            "style": "form",
+            "description": "Repita o parâmetro para vários temas (`temaId=a&temaId=b`)."
           },
           {
             "name": "ano",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "explode": true,
+            "style": "form",
+            "description": "Repita o parâmetro para vários anos (`ano=2021&ano=2023`)."
+          },
+          {
+            "name": "historico",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricoPratica"
+            },
+            "description": "Padrão: `TODAS`."
           },
           {
             "name": "busca",
@@ -4174,6 +4195,611 @@
           },
           "403": {
             "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/pratica/contagem": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "contagemDaPratica",
+        "summary": "Quantas questões há em cada tema do curso, para montar a prova",
+        "description": "Só temas com pelo menos uma questão disponível (mesmas regras e filtros da listagem), em ordem alfabética. Traz também o desempenho do aluno no tema, para destacar os temas fracos.",
+        "parameters": [
+          {
+            "name": "cursoId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ano",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "description": "Repita o parâmetro para vários anos.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "historico",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricoPratica"
+            },
+            "description": "Padrão: `TODAS`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContagemTemaResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/pratica/sortear": {
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "sortearPratica",
+        "summary": "Sorteia questões para a prova montada pelo aluno, sem gabarito",
+        "description": "Mesmas regras da listagem. Pode devolver menos que o pedido se não houver questões suficientes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SortearPraticaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuestaoAlunoResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/provas": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "minhasProvas",
+        "summary": "Provas que o aluno montou, da mais recente à mais antiga",
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProvaPessoalResumoResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "criarProva",
+        "summary": "Salva a prova montada e começa a praticar",
+        "description": "Todas as questões precisam ser do mesmo curso e estar disponíveis na prática livre. A prova é só do aluno: não vai para a turma.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarProvaPessoalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvaPessoalResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/provas/{provaId}": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "detalharProva",
+        "summary": "Prova do aluno, com as respostas já dadas",
+        "description": "O gabarito só vem nas questões já respondidas e que continuam disponíveis na prática livre.",
+        "parameters": [
+          {
+            "name": "provaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvaPessoalResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "excluirProva",
+        "summary": "Tira a prova do histórico",
+        "description": "As respostas continuam contando no desempenho do aluno.",
+        "parameters": [
+          {
+            "name": "provaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sem conteúdo."
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/provas/{provaId}/questoes/{questaoId}/responder": {
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "responderNaProva",
+        "summary": "Responde uma questão da prova e recebe gabarito e explicação",
+        "parameters": [
+          {
+            "name": "provaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "questaoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GabaritoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/provas/{provaId}/concluir": {
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "concluirProva",
+        "summary": "Conclui a prova; questões sem resposta contam como não acertadas",
+        "parameters": [
+          {
+            "name": "provaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvaPessoalResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/provas/{provaId}/refazer": {
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "refazerProva",
+        "summary": "Nova prova com as mesmas questões, sem respostas",
+        "description": "Ficam de fora as questões que deixaram de estar disponíveis na prática livre.",
+        "parameters": [
+          {
+            "name": "provaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Criada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvaPessoalResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Erro"
+          }
+        }
+      }
+    },
+    "/api/v1/aluno/provas/{provaId}/erradas": {
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "operationId": "provaComErradas",
+        "summary": "Nova prova só com as questões erradas ou sem resposta",
+        "description": "Ficam de fora as questões que deixaram de estar disponíveis na prática livre.",
+        "parameters": [
+          {
+            "name": "provaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Criada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvaPessoalResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem acesso (`ACESSO_NEGADO`) ou professor aguardando aprovação (`CADASTRO_PENDENTE`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado, ou pertence a outro usuário.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada; veja `codigo`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6106,6 +6732,229 @@
             }
           }
         }
+      },
+      "ContagemTemaResponse": {
+        "type": "object",
+        "description": "Tema, quantas questões dele estão disponíveis e o desempenho do aluno nele (todas as respostas já corrigidas).",
+        "required": [
+          "tema",
+          "total",
+          "respondidas",
+          "acertos"
+        ],
+        "properties": {
+          "tema": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "respondidas": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Respostas do aluno no tema."
+          },
+          "acertos": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SortearPraticaRequest": {
+        "type": "object",
+        "required": [
+          "cursoId",
+          "quantidade"
+        ],
+        "properties": {
+          "cursoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "temaIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Vazio sorteia entre todos os temas do curso."
+          },
+          "anos": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Vazio não filtra por ano."
+          },
+          "quantidade": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "excluirIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 100,
+            "description": "Questões que já estão na prova e não devem ser sorteadas de novo."
+          },
+          "historico": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoricoPratica"
+              }
+            ],
+            "nullable": true,
+            "description": "Nulo vale `TODAS`."
+          },
+          "equilibrar": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Distribui as questões igualmente entre os temas (atalho Simulado ENADE). Nulo ou falso sorteia sem distribuir."
+          }
+        }
+      },
+      "CriarProvaPessoalRequest": {
+        "type": "object",
+        "required": [
+          "questaoIds"
+        ],
+        "properties": {
+          "questaoIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "maxItems": 200,
+            "description": "Na ordem em que serão respondidas."
+          },
+          "nome": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true,
+            "description": "Vazio gera o nome a partir dos temas."
+          }
+        }
+      },
+      "ProvaPessoalResumoResponse": {
+        "type": "object",
+        "description": "Prova montada pelo aluno, para o histórico.",
+        "required": [
+          "id",
+          "nome",
+          "curso",
+          "temas",
+          "total",
+          "respondidas",
+          "acertos",
+          "criadaEm",
+          "concluidaEm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "curso": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "temas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Nomes dos temas, na ordem em que aparecem na prova."
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "respondidas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "acertos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "criadaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "concluidaEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "QuestaoDaProvaResponse": {
+        "type": "object",
+        "required": [
+          "ordem",
+          "questao",
+          "disponivel",
+          "gabarito"
+        ],
+        "properties": {
+          "ordem": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "questao": {
+            "$ref": "#/components/schemas/QuestaoAlunoResponse"
+          },
+          "disponivel": {
+            "type": "boolean",
+            "description": "Falso se a questão foi ocultada ou entrou em uma atividade que o aluno ainda não concluiu: não pode ser respondida e não mostra gabarito."
+          },
+          "gabarito": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GabaritoResponse"
+              }
+            ],
+            "nullable": true,
+            "description": "Só nas questões já respondidas e disponíveis."
+          }
+        }
+      },
+      "ProvaPessoalResponse": {
+        "type": "object",
+        "required": [
+          "prova",
+          "questoes"
+        ],
+        "properties": {
+          "prova": {
+            "$ref": "#/components/schemas/ProvaPessoalResumoResponse"
+          },
+          "questoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestaoDaProvaResponse"
+            }
+          }
+        }
+      },
+      "HistoricoPratica": {
+        "type": "string",
+        "enum": [
+          "TODAS",
+          "NAO_RESPONDIDAS",
+          "ERRADAS"
+        ],
+        "description": "Filtro pelo histórico do aluno (prática e atividades já enviadas). `ERRADAS`: a última resposta dele à questão foi errada."
       }
     }
   }

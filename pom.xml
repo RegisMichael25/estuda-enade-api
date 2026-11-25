@@ -179,6 +179,7 @@
 								<schemaMapping>TipoAtividade=com.estudaenade.api.domain.enums.TipoAtividade</schemaMapping>
 								<schemaMapping>StatusAtividade=com.estudaenade.api.domain.enums.StatusAtividade</schemaMapping>
 								<schemaMapping>StatusQuestao=com.estudaenade.api.domain.enums.StatusQuestao</schemaMapping>
+								<schemaMapping>HistoricoPratica=com.estudaenade.api.domain.enums.HistoricoPratica</schemaMapping>
 								<schemaMapping>Encerramento=com.estudaenade.api.domain.enums.Encerramento</schemaMapping>
 								<schemaMapping>ErroResponse=com.estudaenade.api.exception.GlobalExceptionHandler.ErroResponse</schemaMapping>
 								<schemaMapping>ItemResponse=com.estudaenade.api.api.dto.ItemResponse</schemaMapping>
@@ -200,6 +201,10 @@
 								<schemaMapping>AlternativaAlunoResponse=com.estudaenade.api.api.dto.QuestaoDtos.AlternativaAlunoResponse</schemaMapping>
 								<schemaMapping>QuestaoAlunoResponse=com.estudaenade.api.api.dto.QuestaoDtos.QuestaoAlunoResponse</schemaMapping>
 								<schemaMapping>GabaritoResponse=com.estudaenade.api.api.dto.QuestaoDtos.GabaritoResponse</schemaMapping>
+								<schemaMapping>ContagemTemaResponse=com.estudaenade.api.api.dto.QuestaoDtos.ContagemTemaResponse</schemaMapping>
+								<schemaMapping>ProvaPessoalResumoResponse=com.estudaenade.api.api.dto.ProvaPessoalDtos.ProvaPessoalResumoResponse</schemaMapping>
+								<schemaMapping>QuestaoDaProvaResponse=com.estudaenade.api.api.dto.ProvaPessoalDtos.QuestaoDaProvaResponse</schemaMapping>
+								<schemaMapping>ProvaPessoalResponse=com.estudaenade.api.api.dto.ProvaPessoalDtos.ProvaPessoalResponse</schemaMapping>
 								<schemaMapping>AtividadeResponse=com.estudaenade.api.api.dto.AtividadeDtos.AtividadeResponse</schemaMapping>
 								<schemaMapping>AtividadeDetalheResponse=com.estudaenade.api.api.dto.AtividadeDtos.AtividadeDetalheResponse</schemaMapping>
 								<schemaMapping>AtividadeAlunoResponse=com.estudaenade.api.api.dto.AtividadeDtos.AtividadeAlunoResponse</schemaMapping>
