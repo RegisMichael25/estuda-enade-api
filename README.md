@@ -14,7 +14,7 @@ docker compose up -d database              # PostgreSQL em localhost:5435
 ./mvnw spring-boot:run
 ```
 
-A API sobe em `http://localhost:8080`, cria o esquema e carrega dados de exemplo iguais aos do protótipo.
+A API sobe em `http://localhost:8080`, cria o esquema e carrega a massa de dados: 1 professor e 220 questões publicadas em 10 cursos e 20 temas (`V00011__massa_de_dados.sql`).
 Não há perfis (dev, prod...): a configuração é uma só, em `application.properties`.
 
 Segredos ficam fora do repositório, em um arquivo `.env` na raiz do projeto (lido pela API e pelo `docker-compose`):
@@ -30,14 +30,14 @@ Sem `JWT_SECRET` a API sobe do mesmo jeito, com um segredo aleatório que dura a
 ### Entrando
 
 Login e cadastro são rotas separadas, com e-mail e senha ou com Google. O código por e-mail serve só para o "esqueci a senha".
-Os dados de exemplo incluem professores e alunos já vinculados a uma turma, todos com a senha `123456` (por exemplo, `professor@estudaenade.dev` e `ana@estudaenade.dev`).
+A única conta criada é a do professor; o e-mail e a senha ficam em `../ACESSOS-LOCAIS.txt` (fora do git). Alunos se cadastram pela tela ou por `POST /api/v1/auth/cadastrar`.
 
 ```bash
 # Cadastro (201) ou login (200): os dois devolvem a sessão
 curl -X POST localhost:8080/api/v1/auth/cadastrar -H 'Content-Type: application/json' \
      -d '{"nome":"Ana","email":"<e-mail>","senha":"<senha>","papel":"ALUNO"}'
 curl -X POST localhost:8080/api/v1/auth/entrar -H 'Content-Type: application/json' \
-     -d '{"email":"ana@estudaenade.dev","senha":"123456"}'
+     -d '{"email":"<e-mail>","senha":"<senha>"}'
 # → { "accessToken": "...", "refreshToken": "...", "usuario": { ... } }
 curl localhost:8080/api/v1/aluno/atividades -H 'Authorization: Bearer <accessToken>'
 
@@ -108,7 +108,7 @@ src/main/java/com/estudaenade/api
 src/main/resources
 ├── application.properties        configuração única
 ├── static/openapi                contrato OpenAPI (fonte das rotas e requisições)
-└── db/migration                  Flyway (esquema e dados de exemplo)
+└── db/migration                  Flyway (esquema e massa de dados)
 ```
 
 ## Endpoints
