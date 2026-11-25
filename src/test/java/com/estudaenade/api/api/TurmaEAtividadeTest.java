@@ -18,6 +18,7 @@ class TurmaEAtividadeTest extends IntegrationTest {
     private String codigoConvite;
     private String q1;
     private String q2;
+    private String curso;
 
     @BeforeEach
     void preparar() throws Exception {
@@ -26,7 +27,7 @@ class TurmaEAtividadeTest extends IntegrationTest {
         ResultActions turma = criarTurma(prof);
         turmaId = ler(turma, "$.id");
         codigoConvite = ler(turma, "$.codigoConvite");
-        String curso = criarCurso(prof, "ADS");
+        curso = criarCurso(prof, "ADS");
         q1 = questaoPublicada(prof, curso, criarTema(prof, curso, "Banco de Dados"), 2);
         q2 = questaoPublicada(prof, curso, criarTema(prof, curso, "Redes"), 1);
     }
@@ -305,6 +306,35 @@ class TurmaEAtividadeTest extends IntegrationTest {
     }
 
     @Test
+    void provaDoAlunoEscondeGabaritoDeQuestaoQueEntrouEmAtividade() throws Exception {
+        // a Ana monta a prova antes de entrar na turma, e responde uma das questões
+        ResultActions prova = post("/api/v1/aluno/provas", ana, "{\"questaoIds\":[\"%s\",\"%s\"]}".formatted(q1, q2))
+                .andExpect(status().isCreated());
+        String provaId = ler(prova, "$.prova.id");
+        String certaQ1 = ler(prova, "$.questoes[0].questao.alternativas[2].id");
+        String primeiraQ2 = ler(prova, "$.questoes[1].questao.alternativas[0].id");
+        post("/api/v1/aluno/provas/%s/questoes/%s/responder".formatted(provaId, q1), ana,
+                "{\"alternativaId\":\"%s\"}".formatted(certaQ1))
+                .andExpect(status().isOk());
+
+        // depois as duas entram em uma atividade aberta da turma dela
+        atividadePublicada("30", "1");
+        entrarNaTurma(ana);
+
+        get("/api/v1/aluno/provas/" + provaId, ana)
+                .andExpect(jsonPath("$.questoes[0].disponivel").value(false))
+                .andExpect(jsonPath("$.questoes[0].gabarito").doesNotExist())
+                .andExpect(jsonPath("$.questoes[1].disponivel").value(false));
+        post("/api/v1/aluno/provas/%s/questoes/%s/responder".formatted(provaId, q2), ana,
+                "{\"alternativaId\":\"%s\"}".formatted(primeiraQ2))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("QUESTAO_EM_ATIVIDADE"));
+        post("/api/v1/aluno/provas/" + provaId + "/refazer", ana, null)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("SEM_QUESTOES_DISPONIVEIS"));
+    }
+
+    @Test
     void praticaLivreNaoEntregaGabaritoDeAtividadeAindaNaoConcluida() throws Exception {
         String atividade = atividadePublicada("30", "1");
         entrarNaTurma(ana);
@@ -313,6 +343,12 @@ class TurmaEAtividadeTest extends IntegrationTest {
         // antes mesmo de iniciar, as questões da atividade saem da prática livre da Ana
         get("/api/v1/aluno/pratica/questoes", ana).andExpect(jsonPath("$.total").value(0));
         get("/api/v1/aluno/pratica/questoes", bruno).andExpect(jsonPath("$.total").value(2));
+        // nem a contagem nem o sorteio da prova montada trazem essas questões
+        get("/api/v1/aluno/pratica/contagem?cursoId=" + curso, ana).andExpect(jsonPath("$", hasSize(0)));
+        post("/api/v1/aluno/pratica/sortear", ana, "{\"cursoId\":\"%s\",\"quantidade\":10}".formatted(curso))
+                .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(0)));
+        post("/api/v1/aluno/pratica/sortear", bruno, "{\"cursoId\":\"%s\",\"quantidade\":10}".formatted(curso))
+                .andExpect(jsonPath("$", hasSize(2)));
 
         ResultActions estado = post("/api/v1/aluno/atividades/" + atividade + "/tentativas", ana, null);
         String tentativa = ler(estado, "$.id");

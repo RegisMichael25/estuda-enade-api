@@ -2,8 +2,10 @@ package com.estudaenade.api.domain.service;
 
 import com.estudaenade.api.api.contrato.dto.AlternativaRequest;
 import com.estudaenade.api.api.contrato.dto.QuestaoRequest;
+import com.estudaenade.api.api.dto.ItemResponse;
 import com.estudaenade.api.api.dto.Pagina;
 import com.estudaenade.api.api.dto.QuestaoDtos.*;
+import com.estudaenade.api.domain.enums.HistoricoPratica;
 import com.estudaenade.api.domain.enums.Papel;
 import com.estudaenade.api.domain.enums.StatusQuestao;
 import com.estudaenade.api.domain.model.Alternativa;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Banco institucional de questões: cadastro, publicação, edição restrita ao autor e sinalizações. */
@@ -36,6 +39,10 @@ public class QuestaoService {
     private final CursoRepository cursoRepository;
     private final TemaRepository temaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final jakarta.persistence.EntityManager entityManager;
+
+    /** Máximo de questões por sorteio na prática livre (o mesmo teto da paginação). */
+    public static final int MAXIMO_SORTEIO = 100;
 
     /** Filtros do banco. Campos nulos (e busca em branco) não filtram. */
     public record Filtro(Boolean minhas, UUID cursoId, UUID temaId, Integer ano, String busca,
@@ -154,20 +161,105 @@ public class QuestaoService {
     /**
      * Questões publicadas para a prática livre, sem gabarito. Ficam de fora as que o aluno ainda vai
      * responder em uma atividade: a prática devolve o gabarito na hora e entregaria a resposta da atividade.
+     * Listas vazias (ou nulas) de temas e anos não filtram.
      */
     @Transactional(readOnly = true)
-    public Pagina<QuestaoAlunoResponse> listarParaPratica(UUID alunoId, UUID cursoId, UUID temaId, Integer ano, String busca,
-                                                          int pagina, int tamanho) {
-        List<UUID> reservadas = questaoRepository.reservadasParaAtividade(alunoId);
-        Specification<Questao> spec = (root, query, cb) -> {
+    public Pagina<QuestaoAlunoResponse> listarParaPratica(UUID alunoId, UUID cursoId, List<UUID> temaIds, List<Integer> anos,
+                                                          HistoricoPratica historico, String busca, int pagina, int tamanho) {
+        Specification<Questao> spec = disponivelNaPratica(alunoId, cursoId, temaIds, anos, historico, busca, List.of());
+        Sort ordem = Sort.by(Sort.Order.desc("ano"), Sort.Order.asc("publicadaEm"), Sort.Order.asc("id"));
+        return Pagina.de(questaoRepository.findAll(spec, pagina(pagina, tamanho, ordem)), QuestaoAlunoResponse::de);
+    }
+
+    /**
+     * Quantas questões da prática há em cada tema do curso, para o aluno montar a prova. Só temas com questão.
+     * O desempenho do aluno no tema vem de {@code desempenhoPorTema} (id do tema → [respondidas, acertos]).
+     */
+    @Transactional(readOnly = true)
+    public List<ContagemTemaResponse> contagemDaPratica(UUID alunoId, UUID cursoId, List<Integer> anos,
+                                                        HistoricoPratica historico, Map<UUID, long[]> desempenhoPorTema) {
+        if (cursoId == null) throw ApiException.regra("CURSO_OBRIGATORIO", "Escolha o curso.");
+        Specification<Questao> spec = disponivelNaPratica(alunoId, cursoId, List.of(), anos, historico, null, List.of());
+        var cb = entityManager.getCriteriaBuilder();
+        var query = cb.createTupleQuery();
+        var root = query.from(Questao.class);
+        var tema = root.join("tema");
+        var total = cb.count(root);
+        query.multiselect(tema.get("id"), tema.get("nome"), total)
+                .where(spec.toPredicate(root, query, cb))
+                .groupBy(tema.get("id"), tema.get("nome"))
+                .orderBy(cb.asc(tema.get("nome")));
+        return entityManager.createQuery(query).getResultList().stream()
+                .map(t -> {
+                    UUID temaId = t.get(0, UUID.class);
+                    long[] d = desempenhoPorTema.getOrDefault(temaId, new long[]{0, 0});
+                    return new ContagemTemaResponse(new ItemResponse(temaId, t.get(1, String.class)), t.get(2, Long.class),
+                            d[0], d[1]);
+                })
+                .toList();
+    }
+
+    /**
+     * Sorteia questões da prática para a prova que o aluno está montando, sem repetir as que ele já escolheu.
+     * Com {@code equilibrar}, reparte a quantidade igualmente entre os temas (um de cada tema por vez).
+     * Devolve menos que o pedido quando não há questões suficientes.
+     */
+    @Transactional(readOnly = true)
+    public List<QuestaoAlunoResponse> sortearParaPratica(UUID alunoId, UUID cursoId, List<UUID> temaIds, List<Integer> anos,
+                                                         HistoricoPratica historico, boolean equilibrar,
+                                                         int quantidade, List<UUID> excluirIds) {
+        if (cursoId == null) throw ApiException.regra("CURSO_OBRIGATORIO", "Escolha o curso.");
+        if (quantidade < 1 || quantidade > MAXIMO_SORTEIO) {
+            throw ApiException.regra("QUANTIDADE_INVALIDA", "Sorteie de 1 a " + MAXIMO_SORTEIO + " questões.");
+        }
+        Specification<Questao> spec = disponivelNaPratica(alunoId, cursoId, temaIds, anos, historico, null, excluirIds);
+        var cb = entityManager.getCriteriaBuilder();
+        var query = cb.createTupleQuery();
+        var root = query.from(Questao.class);
+        query.multiselect(root.get("id"), root.get("tema").get("id")).where(spec.toPredicate(root, query, cb));
+        // Candidatas embaralhadas, agrupadas por tema
+        Map<UUID, java.util.Deque<UUID>> porTema = new java.util.LinkedHashMap<>();
+        List<jakarta.persistence.Tuple> candidatas = new ArrayList<>(entityManager.createQuery(query).getResultList());
+        java.util.Collections.shuffle(candidatas);
+        candidatas.forEach(t -> porTema.computeIfAbsent(t.get(1, UUID.class), k -> new java.util.ArrayDeque<>())
+                .add(t.get(0, UUID.class)));
+
+        List<UUID> sorteados = new ArrayList<>();
+        if (equilibrar) {
+            // Uma de cada tema por rodada, até completar ou acabar
+            while (sorteados.size() < quantidade && porTema.values().stream().anyMatch(f -> !f.isEmpty())) {
+                for (var fila : porTema.values()) {
+                    if (sorteados.size() == quantidade) break;
+                    if (!fila.isEmpty()) sorteados.add(fila.poll());
+                }
+            }
+            java.util.Collections.shuffle(sorteados);
+        } else {
+            candidatas.stream().limit(quantidade).forEach(t -> sorteados.add(t.get(0, UUID.class)));
+        }
+        var porId = new java.util.HashMap<UUID, Questao>();
+        questaoRepository.findAllById(sorteados).forEach(q -> porId.put(q.getId(), q));
+        return sorteados.stream().map(porId::get).map(QuestaoAlunoResponse::de).toList();
+    }
+
+    /** Publicadas, sem as reservadas para atividade do aluno e sem as já escolhidas ({@code excluirIds}). */
+    private Specification<Questao> disponivelNaPratica(UUID alunoId, UUID cursoId, List<UUID> temaIds, List<Integer> anos,
+                                                       HistoricoPratica historico, String busca, List<UUID> excluirIds) {
+        List<UUID> reservadas = new ArrayList<>(questaoRepository.reservadasParaAtividade(alunoId));
+        if (excluirIds != null) reservadas.addAll(excluirIds);
+        if (historico == HistoricoPratica.NAO_RESPONDIDAS) reservadas.addAll(questaoRepository.respondidasPeloAluno(alunoId));
+        // "Só as que errei" restringe a uma lista; vazia, não sobra nenhuma questão
+        List<UUID> somente = historico == HistoricoPratica.ERRADAS ? questaoRepository.erradasNaUltimaResposta(alunoId) : null;
+        return (root, query, cb) -> {
             List<Predicate> ps = new ArrayList<>();
             ps.add(cb.equal(root.get("status"), StatusQuestao.PUBLICADA));
             if (!reservadas.isEmpty()) ps.add(cb.not(root.get("id").in(reservadas)));
-            filtrosComuns(ps, root, cb, cursoId, temaId, ano, busca);
+            if (somente != null) ps.add(somente.isEmpty() ? cb.disjunction() : root.get("id").in(somente));
+            if (temaIds != null && !temaIds.isEmpty()) ps.add(root.get("tema").get("id").in(temaIds));
+            if (anos != null && !anos.isEmpty()) ps.add(root.get("ano").in(anos));
+            filtrosComuns(ps, root, cb, cursoId, null, null, busca);
             return cb.and(ps.toArray(Predicate[]::new));
         };
-        Sort ordem = Sort.by(Sort.Order.desc("ano"), Sort.Order.asc("publicadaEm"), Sort.Order.asc("id"));
-        return Pagina.de(questaoRepository.findAll(spec, pagina(pagina, tamanho, ordem)), QuestaoAlunoResponse::de);
     }
 
     /** Anos que têm questão publicada (no curso, se informado), para o filtro da prática livre. */

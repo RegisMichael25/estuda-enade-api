@@ -29,6 +29,22 @@ public interface QuestaoRepository extends JpaRepository<Questao, UUID>, JpaSpec
             """, nativeQuery = true)
     List<UUID> reservadasParaAtividade(UUID alunoId);
 
+    /** Questões que o aluno já respondeu e teve corrigidas (prática ou tentativa enviada). */
+    @Query(value = "select distinct r.questao_id from resposta_avaliada r where r.aluno_id = :alunoId", nativeQuery = true)
+    List<UUID> respondidasPeloAluno(UUID alunoId);
+
+    /** Questões cuja última resposta corrigida do aluno foi errada. */
+    @Query(value = """
+            select u.questao_id from (
+                select distinct on (r.questao_id) r.questao_id, r.correta
+                from resposta_avaliada r
+                where r.aluno_id = :alunoId
+                order by r.questao_id, r.respondida_em desc
+            ) u
+            where not u.correta
+            """, nativeQuery = true)
+    List<UUID> erradasNaUltimaResposta(UUID alunoId);
+
     // Anos para os filtros, do mais recente ao mais antigo. Uma consulta com e outra sem curso,
     // para não depender de parâmetro nulo na query.
 

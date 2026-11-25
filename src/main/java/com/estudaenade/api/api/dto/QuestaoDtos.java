@@ -64,6 +64,13 @@ public final class QuestaoDtos {
         }
     }
 
+    /**
+     * Tema, quantas questões dele estão disponíveis para a prática livre e o desempenho do aluno nele
+     * (todas as respostas já corrigidas), para destacar os temas fracos.
+     */
+    public record ContagemTemaResponse(ItemResponse tema, long total, long respondidas, long acertos) {
+    }
+
     /** Feedback de uma questão já respondida. */
     public record GabaritoResponse(UUID questaoId, UUID alternativaCorretaId, String letraCorreta, String explicacao,
                                    UUID alternativaMarcadaId, boolean acertou) {
