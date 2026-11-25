@@ -456,5 +456,46 @@ class TurmaEAtividadeTest extends IntegrationTest {
         post("/api/v1/aluno/atividades/" + atividade + "/tentativas", bruno, null)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("ATIVIDADE_ENCERRADA"));
+
+        // melhorTentativaId aponta para a melhor tentativa (e para quem não fez, fica nulo)
+        get("/api/v1/aluno/atividades/" + atividade, ana)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.melhorAcertos").value(2))
+                .andExpect(jsonPath("$.melhorTentativaId").value(t2))
+                .andExpect(jsonPath("$.podeIniciar").value(false));
+        get("/api/v1/aluno/atividades/" + atividade, bruno)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.melhorAcertos").value(nullValue()))
+                .andExpect(jsonPath("$.melhorTentativaId").value(nullValue()))
+                .andExpect(jsonPath("$.podeIniciar").value(false));
+    }
+
+    @Test
+    void melhorTentativaDesempataPelaMaisRecente() throws Exception {
+        String atividade = atividadePublicada("LISTA", "null", "null");
+        entrarNaTurma(ana);
+
+        // 1ª tentativa: 1 acerto
+        ResultActions e1 = post("/api/v1/aluno/atividades/" + atividade + "/tentativas", ana, null);
+        String t1 = ler(e1, "$.id");
+        marcar(ana, t1, q1, alternativa(e1, 0, 2));
+        post("/api/v1/aluno/tentativas/" + t1 + "/enviar", ana, null).andExpect(jsonPath("$.tentativa.acertos").value(1));
+
+        // 2ª tentativa: 1 acerto (empate -> deve escolher esta por ser a mais recente)
+        ResultActions e2 = post("/api/v1/aluno/atividades/" + atividade + "/tentativas", ana, null);
+        String t2 = ler(e2, "$.id");
+        marcar(ana, t2, q1, alternativa(e2, 0, 2));
+        post("/api/v1/aluno/tentativas/" + t2 + "/enviar", ana, null).andExpect(jsonPath("$.tentativa.acertos").value(1));
+
+        // 3ª tentativa: 0 acertos -> a melhor continua sendo a 2ª
+        ResultActions e3 = post("/api/v1/aluno/atividades/" + atividade + "/tentativas", ana, null);
+        String t3 = ler(e3, "$.id");
+        post("/api/v1/aluno/tentativas/" + t3 + "/enviar", ana, null).andExpect(jsonPath("$.tentativa.acertos").value(0));
+
+        get("/api/v1/aluno/atividades/" + atividade, ana)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.melhorAcertos").value(1))
+                .andExpect(jsonPath("$.melhorTentativaId").value(t2))
+                .andExpect(jsonPath("$.podeIniciar").value(true));
     }
 }

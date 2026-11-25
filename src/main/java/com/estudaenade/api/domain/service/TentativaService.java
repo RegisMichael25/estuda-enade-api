@@ -234,15 +234,21 @@ public class TentativaService {
 
     private AtividadeAlunoResponse resumo(Atividade a, List<Tentativa> tentativas) {
         UUID abertaId = tentativas.stream().filter(t -> !t.finalizada()).map(Tentativa::getId).findFirst().orElse(null);
-        Integer melhor = tentativas.stream().filter(Tentativa::finalizada).map(Tentativa::getAcertos)
-                .max(Comparator.naturalOrder()).orElse(null);
+        Tentativa melhorTentativa = tentativas.stream()
+                .filter(Tentativa::finalizada)
+                .max(Comparator.comparingInt((Tentativa t) -> t.getAcertos() == null ? 0 : t.getAcertos())
+                        .thenComparing(Tentativa::getFinalizadaEm)
+                        .thenComparingInt(Tentativa::getNumero))
+                .orElse(null);
+        Integer melhor = melhorTentativa == null ? null : melhorTentativa.getAcertos();
+        UUID melhorTentativaId = melhorTentativa == null ? null : melhorTentativa.getId();
         boolean podeIniciar = abertaId != null || (a.getStatus() == StatusAtividade.PUBLICADA
                 && (a.getMaxTentativas() == null || tentativas.size() < a.getMaxTentativas()));
         return new AtividadeAlunoResponse(a.getId(), a.getTitulo(), a.getTipo(),
                 new ItemResponse(a.getTurma().getId(), a.getTurma().getNome()),
                 a.getQuestoes().size(), a.duracaoEmMinutos(), a.getDuracao(),
                 UnidadeTempoResponse.de(a.getUnidadeTempo()), a.getMaxTentativas(), a.getStatus(),
-                tentativas.size(), abertaId, melhor, podeIniciar);
+                tentativas.size(), abertaId, melhor, melhorTentativaId, podeIniciar);
     }
 
     /** Atividade publicada (ou encerrada) de uma turma em que o aluno está, ou 404. */

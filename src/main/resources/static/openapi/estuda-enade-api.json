@@ -5409,6 +5409,7 @@
           "tentativasFeitas",
           "tentativaAbertaId",
           "melhorAcertos",
+          "melhorTentativaId",
           "podeIniciar"
         ],
         "properties": {
@@ -5469,6 +5470,11 @@
           "melhorAcertos": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "melhorTentativaId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           },
           "podeIniciar": {
