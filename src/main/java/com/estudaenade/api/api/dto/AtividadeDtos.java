@@ -48,7 +48,7 @@ public final class AtividadeDtos {
                                          int totalQuestoes, Integer duracaoMinutos, Integer duracao,
                                          UnidadeTempoResponse unidadeTempo, Integer maxTentativas,
                                          StatusAtividade status, long tentativasFeitas, UUID tentativaAbertaId,
-                                         Integer melhorAcertos, boolean podeIniciar) {
+                                         Integer melhorAcertos, UUID melhorTentativaId, boolean podeIniciar) {
     }
 
     /**
